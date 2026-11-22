@@ -1,0 +1,14 @@
+{
+  "name": "needledrop",
+  "version": "0.1.0",
+  "description": "Music timeline party game for one laptop: Spotify plays a song, you place it on your timeline by release year.",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test tests/game.test.mjs",
+    "test:e2e": "node tests/e2e.mjs"
+  }
+}
