@@ -22,7 +22,7 @@ let sp = null;
 const ui = {
   view: game && game.phase !== 'over' ? 'game' : 'setup',
   busy: '', toast: '', modal: null, challenger: null, devices: [], me: null,
-  builder: { genre: 'rock', other: '', decades: [], owner: 'all' },
+  builder: { genres: ['rock'], other: '', decades: [], owner: 'all' },
   playing: false, peek: false,
 };
 
@@ -288,14 +288,16 @@ function addPlayer() {
 function builderCount() {
   const b = ui.builder;
   if (b.other.trim()) return null;
-  return G.packSongs({ src: 'lib', genre: b.genre, decades: b.decades }, library, setup.settings).length;
+  return G.packSongs({ src: 'lib', genres: b.genres, decades: b.decades }, library, setup.settings).length;
 }
 
 async function addPack() {
   const b = ui.builder;
   const other = b.other.trim();
-  const pack = { id: uid(), src: other ? 'spotify' : 'lib', genre: other || b.genre, decades: b.decades.slice().sort(), owner: b.owner };
-  if (setup.packs.some((p) => p.src === pack.src && p.genre.toLowerCase() === pack.genre.toLowerCase() && p.owner === pack.owner && p.decades.join() === pack.decades.join())) {
+  const pack = other
+    ? { id: uid(), src: 'spotify', genre: other, decades: b.decades.slice().sort(), owner: b.owner }
+    : { id: uid(), src: 'lib', genres: G.packGenreIds({ genres: b.genres }), decades: b.decades.slice().sort(), owner: b.owner };
+  if (setup.packs.some((p) => p.src === pack.src && G.packLabel(p).toLowerCase() === G.packLabel(pack).toLowerCase() && p.owner === pack.owner)) {
     toast('That pack is already in the list.');
     return;
   }
@@ -314,12 +316,12 @@ async function loadSearchPack(pack) {
   const decades = pack.decades.length ? pack.decades : G.DECADES;
   const songs = [];
   const seen = new Set();
-  const g = pack.genre.replace(/"/g, '');
-  for (const d of decades) {
+  // "eurodance, grunge" searches each genre.
+  for (const g of pack.genre.replace(/"/g, '').split(',').map((x) => x.trim()).filter(Boolean)) for (const d of decades) {
     const range = `${d}-${Math.min(d + 9, new Date().getFullYear())}`;
     let q = `genre:"${g}" year:${range}`;
     for (let page = 0; page < 6; page++) {
-      ui.busy = `Searching Spotify for ${pack.genre} from the ${G.decadeLabel(d)}… ${songs.length} songs`;
+      ui.busy = `Searching Spotify for ${g} from the ${G.decadeLabel(d)}… ${songs.length} songs`;
       render();
       let items;
       try { items = await sp.searchTracks(q, { offset: page * 10 }); } catch (e) { toast(explain(e)); break; }
@@ -467,13 +469,14 @@ function renderSetup() {
       ${p.src === 'spotify' ? `<button class="icon" data-action="reloadPack" data-id="${p.id}" title="Search again">↻</button>` : ''}
       <button class="icon" data-action="removePack" data-id="${p.id}" title="Remove">✕</button>
     </div>`;
-  }).join('') || '<p class="empty">No songs yet. Pick a genre and some decades below, or press <b>Add everyone\'s era</b>.</p>';
+  }).join('') || '<p class="empty">No songs yet. Pick genres and decades below, or press <b>Add everyone\'s era</b>.</p>';
 
   const b = ui.builder;
   const count = builderCount();
-  const genreChips = G.GENRES.map((g) => `<button class="chip ${!b.other && b.genre === g.id ? 'on' : ''}" data-action="genre" data-id="${g.id}">${esc(g.label)}</button>`).join('');
+  const gOn = G.packGenreIds({ genres: b.genres });
+  const genreChips = G.GENRES.map((g) => `<button class="chip ${!b.other && gOn.includes(g.id) ? 'on' : ''}" data-action="genre" data-id="${g.id}">${esc(g.label)}</button>`).join('');
   const decadeChips = G.DECADES.map((d) => `<button class="chip ${b.decades.includes(d) ? 'on' : ''}" data-action="decade" data-id="${d}">${G.decadeLabel(d)}</button>`).join('');
-  const preview = G.packLabel({ src: b.other.trim() ? 'spotify' : 'lib', genre: b.other.trim() || b.genre, decades: b.decades });
+  const preview = G.packLabel({ src: b.other.trim() ? 'spotify' : 'lib', genre: b.other.trim(), genres: b.genres, decades: b.decades });
   const pool = G.buildPool(setup.packs, library, s, {}).length;
 
   const inGame = game && game.phase !== 'over';
@@ -506,8 +509,8 @@ function renderSetup() {
           <div class="head"><h2>Songs</h2><span class="meta">${pool} songs in the deck</span></div>
           <div class="packs">${packs}</div>
           <div class="builder">
-            <div class="brow"><span class="lbl">Genre</span><div class="chips">${genreChips}</div></div>
-            <div class="brow"><span class="lbl"></span><input class="other" data-field="other" value="${esc(b.other)}" placeholder="…or any other genre: eurodance, grunge, swedish pop, k-pop (searches Spotify)"></div>
+            <div class="brow"><span class="lbl">Genres</span><div class="chips">${genreChips}</div></div>
+            <div class="brow"><span class="lbl"></span><input class="other" data-field="other" value="${esc(b.other)}" placeholder="…or other genres, comma-separated: eurodance, grunge, k-pop (searches Spotify)"></div>
             <div class="brow"><span class="lbl">Years</span><div class="chips">${decadeChips}<button class="chip ${b.decades.length ? '' : 'on'}" data-action="decade" data-id="all">All years</button></div></div>
             <div class="brow"><span class="lbl">For</span><div class="chips">${owners.map((o) => `<button class="chip ${b.owner === o.id ? 'on' : ''}" data-action="owner" data-id="${o.id}">${esc(o.name)}</button>`).join('')}</div></div>
             <div class="inline wrap">
@@ -761,13 +764,19 @@ $app.addEventListener('click', async (e) => {
     case 'era': {
       const d = G.formativeDecades(player.born);
       if (!d.length) { toast(`Type ${player.name || 'their'} birth year first.`); return; }
-      Object.assign(ui.builder, { decades: d, owner: player.id, genre: ui.builder.genre || 'all' });
+      Object.assign(ui.builder, { decades: d, owner: player.id });
       render();
       $app.querySelector('.builder')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      toast(`Years set to when ${player.name || 'they'} grew up. Pick a genre and press Add.`);
+      toast(`Years set to when ${player.name || 'they'} grew up. Pick genres and press Add.`);
       return;
     }
-    case 'genre': ui.builder.genre = id; ui.builder.other = ''; render(); return;
+    case 'genre': {
+      const gs = ui.builder.genres.filter((x) => x !== 'all');
+      ui.builder.genres = id === 'all' ? ['all'] : gs.includes(id) ? gs.filter((x) => x !== id) : gs.concat(id);
+      if (!ui.builder.genres.length) ui.builder.genres = ['all'];
+      ui.builder.other = '';
+      render(); return;
+    }
     case 'decade': {
       if (id === 'all') ui.builder.decades = [];
       else {
@@ -845,7 +854,7 @@ $app.addEventListener('change', (e) => {
 
 $app.addEventListener('input', (e) => {
   const el = e.target;
-  if (el.dataset.field === 'other') { ui.builder.other = el.value; const btn = $app.querySelector('[data-action="addPack"]'); if (btn) btn.textContent = `Add ${G.packLabel({ src: el.value.trim() ? 'spotify' : 'lib', genre: el.value.trim() || ui.builder.genre, decades: ui.builder.decades })}`; $app.querySelectorAll('.chips .chip[data-action="genre"]').forEach((c) => c.classList.toggle('on', !el.value.trim() && c.dataset.id === ui.builder.genre)); return; }
+  if (el.dataset.field === 'other') { ui.builder.other = el.value; const btn = $app.querySelector('[data-action="addPack"]'); if (btn) btn.textContent = `Add ${G.packLabel({ src: el.value.trim() ? 'spotify' : 'lib', genre: el.value.trim(), genres: ui.builder.genres, decades: ui.builder.decades })}`; const on = G.packGenreIds({ genres: ui.builder.genres }); $app.querySelectorAll('.chips .chip[data-action="genre"]').forEach((c) => c.classList.toggle('on', !el.value.trim() && on.includes(c.dataset.id))); return; }
   const p = el.dataset.id && setup.players.find((x) => x.id === el.dataset.id);
   if (p && el.dataset.field === 'name') { p.name = el.value; saveSetup(); }
   if (p && el.dataset.field === 'born') { p.born = el.value.replace(/\D/g, ''); saveSetup(); }

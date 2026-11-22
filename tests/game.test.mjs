@@ -44,6 +44,16 @@ test('packs filter by genre, decade and exclusions', () => {
   assert.ok(withExtreme.length > metal80.length);
 });
 
+test('multi-genre packs combine genres and label them', () => {
+  const pack = { src: 'lib', genres: ['metal', 'swedish'], decades: [1980] };
+  const songs = G.packSongs(pack, library, G.DEFAULT_SETTINGS);
+  const metal = G.packSongs({ src: 'lib', genre: 'metal', decades: [1980] }, library, G.DEFAULT_SETTINGS);
+  assert.ok(songs.length > metal.length);
+  assert.ok(songs.every((s) => s.tags.includes('metal') || s.tags.includes('swedish')));
+  assert.equal(G.packLabel(pack), "Metal + Swedish · '80s");
+  assert.deepEqual(G.packGenreIds({ genres: ['rock', 'all'] }), ['all']);
+});
+
 test('own-taste pools only use the player packs plus shared ones', () => {
   const packs = [
     { id: 'a', src: 'lib', genre: 'metal', decades: [1980], owner: 'dad' },

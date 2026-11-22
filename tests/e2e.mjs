@@ -75,7 +75,7 @@ try {
 
   // packs: metal 80s+90s for Pappa via the builder, then everyone's era
   await ev(`[...document.querySelectorAll('.player-row [data-action="era"]')][0].click()`);
-  await click('[data-action="genre"][data-id="metal"]');
+  await click('[data-action="genre"][data-id="rock"]'); await click('[data-action="genre"][data-id="metal"]');
   const label = await ev(`document.querySelector('[data-action="addPack"]').textContent`);
   check('era sets decades for Pappa', /Metal · '70s–'90s/.test(label), label.trim());
   await click('[data-action="addPack"]');

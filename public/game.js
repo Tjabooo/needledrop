@@ -86,8 +86,16 @@ export function decadeLabel(d) {
   return d >= 2000 ? `${d}s` : `'${String(d).slice(2)}s`;
 }
 
+// Library packs can hold several genres (pack.genres); older packs have a single pack.genre.
+export function packGenreIds(pack) {
+  const ids = (pack.genres && pack.genres.length ? pack.genres : [pack.genre]).filter(Boolean);
+  return !ids.length || ids.includes('all') ? ['all'] : ids;
+}
+
 export function packLabel(pack) {
-  const g = pack.src === 'lib' ? (GENRES.find((x) => x.id === pack.genre) || { label: pack.genre }).label : pack.genre;
+  const g = pack.src === 'lib'
+    ? packGenreIds(pack).map((id) => (GENRES.find((x) => x.id === id) || { label: id }).label).join(' + ')
+    : pack.genre;
   if (pack.src === 'playlist') return `Playlist: ${pack.name || pack.genre}`;
   const decs = [...(pack.decades || [])].sort((a, b) => a - b);
   let range = 'all years';
@@ -107,8 +115,9 @@ function inDecades(y, decades) {
 export function packSongs(pack, library, settings = DEFAULT_SETTINGS) {
   const exclude = settings.exclude || [];
   if (pack.src === 'lib') {
+    const ids = packGenreIds(pack);
     return library.filter((s) =>
-      (pack.genre === 'all' || s.tags.includes(pack.genre)) &&
+      (ids[0] === 'all' || s.tags.some((t) => ids.includes(t))) &&
       inDecades(s.y, pack.decades) &&
       !s.tags.some((t) => exclude.includes(t)));
   }

@@ -12,7 +12,7 @@ Made for mixed-age game nights: each player can get songs from the years they gr
 
 - **One device, whole table.** Pass-and-play on a laptop: big type, keyboard shortcuts, no phones or cards needed.
 - **Plays through Spotify.** In the browser itself (Web Playback SDK), or on any Spotify app on the network (Spotify Connect). Nothing on screen gives the song away until the reveal.
-- **Song packs in two clicks.** Pick a genre and one or more decades: *Metal · '70s–'90s*, *Swedish · 2010s*, *Everything · '80s–2000s*.
+- **Song packs in two clicks.** Pick one or more genres and decades: *Metal + Hard rock · '70s–'90s*, *Swedish · 2010s*, *Everything · '80s–2000s*.
   - ~1000 hand-picked hits with their original release years (1961–2024) across rock, hard rock, metal, punk, alternative, indie, pop, dance & disco, soul/funk/R&B, hip-hop, country, reggae and Swedish music.
   - Any other genre ("eurodance", "grunge", "k-pop") pulls songs from Spotify search for the chosen decades.
   - Any playlist you made on Spotify.
