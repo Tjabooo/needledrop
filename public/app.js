@@ -489,8 +489,8 @@ function renderSetup() {
         </section>
         <section class="panel rules">
           <h2>Rules</h2>
-          <label class="field row">Cards to win <input type="number" min="3" max="30" data-setting="target" value="${s.target}"></label>
-          <label class="field row">Starting tokens <input type="number" min="0" max="5" data-setting="startTokens" value="${s.startTokens}"></label>
+          <label class="field row switch-row"><span><b>Cards to win</b><small>First to this many cards on their timeline wins.</small></span><input type="number" min="3" max="30" data-setting="target" value="${s.target}"></label>
+          <label class="field row switch-row"><span><b>Starting tokens</b><small>Coins everyone starts with. Spend 1 to skip a song or challenge, 3 to buy a card. Name artist + title to earn more (max 5).</small></span><input type="number" min="0" max="5" data-setting="startTokens" value="${s.startTokens}"></label>
           ${switchRow('challenges', 'Challenges', 'Others can spend a token to bet on a different spot and steal the card.')}
           ${switchRow('nameBonus', 'Name it for a token', 'Say the artist and title out loud: +1 token if you get both.')}
           ${switchRow('ownTaste', 'Everyone gets their own music', 'Songs for each player come from their own packs (plus "Everyone" packs).')}
