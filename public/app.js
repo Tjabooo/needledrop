@@ -202,6 +202,11 @@ function preflight() {
 }
 
 async function startGame() {
+  // Chips picked but never added as a pack: use that selection instead of refusing to start.
+  if (!setup.packs.some((p) => !p.off)) {
+    await addPack();
+    if (!setup.packs.some((p) => !p.off)) return;
+  }
   if (!preflight()) return;
   sp.activate();
   game = G.newGame(setup);
@@ -469,7 +474,7 @@ function renderSetup() {
       ${p.src === 'spotify' ? `<button class="icon" data-action="reloadPack" data-id="${p.id}" title="Search again">↻</button>` : ''}
       <button class="icon" data-action="removePack" data-id="${p.id}" title="Remove">✕</button>
     </div>`;
-  }).join('') || '<p class="empty">No songs yet. Pick genres and decades below, or press <b>Add everyone\'s era</b>.</p>';
+  }).join('') || '<p class="empty">No song packs yet. Pick genres and years below and press the orange <b>Add</b> button (or just <b>Start the game</b> to use what\'s picked).</p>';
 
   const b = ui.builder;
   const count = builderCount();

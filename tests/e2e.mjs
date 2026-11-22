@@ -73,6 +73,13 @@ try {
   await ev(`document.activeElement?.blur()`);
   check('three players', (await ev(`document.querySelectorAll('.player-row').length`)) === 3);
 
+  // starting with chips picked but no pack added uses that selection
+  await click('[data-action="start"]');
+  check('start without packs uses the picked chips', await until(`JSON.parse(localStorage.getItem('nd.setup')).packs.length === 1 && !!document.querySelector('.game')`));
+  await click('[data-action="setup"]');
+  await until(`!!document.querySelector('.setup')`);
+  await click('[data-action="removePack"]');
+
   // packs: metal 80s+90s for Pappa via the builder, then everyone's era
   await ev(`[...document.querySelectorAll('.player-row [data-action="era"]')][0].click()`);
   await click('[data-action="genre"][data-id="rock"]'); await click('[data-action="genre"][data-id="metal"]');
@@ -87,6 +94,7 @@ try {
   await click('[data-action="setting"][data-id="ownTaste"]');
   await shot('setup.png');
 
+  await ev(`window.confirm = () => true`);
   await click('[data-action="start"]');
   check('game starts and a song plays', await until(`!!document.querySelector('.stage-split') && document.querySelectorAll('.timeline .card').length === 1`));
   check('every player got a starter card', (await ev(`JSON.parse(localStorage.getItem('nd.game')).players.every(p => p.timeline.length === 1)`)));
