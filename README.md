@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/Tjabooo/needledrop/actions/workflows/ci.yml/badge.svg)](https://github.com/Tjabooo/needledrop/actions/workflows/ci.yml) [![Release](https://img.shields.io/github/v/release/Tjabooo/needledrop?include_prereleases&sort=semver)](https://github.com/Tjabooo/needledrop/releases) [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-A music timeline party game for one laptop: Spotify plays a mystery song, the player whose turn it is slots it into their timeline by release year, and the first to build a timeline of 10 cards wins.
+A music timeline party game for one laptop (or everyone's phones): Spotify plays a mystery song, the player whose turn it is slots it into their timeline by release year, and the first to build a timeline of 10 cards wins.
 
 Made for mixed-age game nights: each player can get songs from the years they grew up with, so a metal fan born in 1969 and a pop kid born in 2006 both have a fair shot.
 
@@ -11,6 +11,7 @@ Made for mixed-age game nights: each player can get songs from the years they gr
 ## Features
 
 - **One device, whole table.** Pass-and-play on a laptop: big type, keyboard shortcuts, no phones or cards needed.
+- **Or everyone on their own phone.** The host opens a room; the others scan the QR code (or type the four-letter code) and each gets their own screen: their timeline, their turn, their challenges. The host's device runs the game, plays the music and controls the settings. Players at the laptop and players on phones can mix.
 - **Plays through Spotify.** In the browser itself (Web Playback SDK), or on any Spotify app on the network (Spotify Connect). Nothing on screen gives the song away until the reveal.
 - **Song packs in two clicks.** Pick one or more genres and decades: *Metal + Hard rock · '70s–'90s*, *Swedish · 2010s*, *Everything · '80s–2000s*.
   - ~1000 hand-picked hits with their original release years (1961–2024) across rock, hard rock, metal, punk, alternative, indie, pop, dance & disco, soul/funk/R&B, hip-hop, country, reggae and Swedish music.
@@ -25,6 +26,15 @@ Made for mixed-age game nights: each player can get songs from the years they gr
 | Setup | Challenge |
 | --- | --- |
 | ![Setup screen](docs/setup.png) | ![Challenge](docs/challenge.png) |
+
+### Playing on phones
+
+1. On the host device, set up Spotify and the songs as usual, then press **Open a room** (left column).
+2. Everyone else scans the QR code or opens the site and types the code, then enters a name (and a birth year if you use eras). They show up under *Players*; add anyone playing from the host screen there too.
+3. Start the game on the host. Each phone shows whose turn it is; on your turn you pick the gap, lock it in, skip or buy, and reveal. Others challenge from their own phone. The song stays hidden on every phone until the reveal.
+4. The host screen can still do every move for anyone (handy when a phone dies), and Undo stays on the host. A phone that reloads or loses Wi-Fi gets its seat back.
+
+![Lobby, your turn and a challenge on a phone](docs/phones.png)
 
 ## How a turn works
 
@@ -82,6 +92,7 @@ Use the **original** release year (not a remaster or compilation). Tags: `rock h
 ## How it works
 
 - Static page (`public/`) plus a tiny Node server (`server.js`) that serves it and `/config.json`.
+- Rooms (`rooms.js`): an in-memory relay. The host device stays in charge of the game and pushes a trimmed copy (no hidden song, no deck) to the phones over server-sent events; phones post their moves back and the host checks each one against the rules. A host that reconnects after a server restart re-creates its room with the same code and seats. `public/qr.js` draws the join QR code (no dependencies).
 - `public/game.js`: the rules as pure functions (placement, challenges, tokens, packs, deck building), shared with the tests.
 - `public/spotify.js`: PKCE login (no client secret anywhere), the Web Playback SDK player, playback control and search.
 - Library songs are matched to the original Spotify recording when drawn (live versions, remixes, remasters and compilations score lower) and cached in the browser. Songs from Spotify search get their year checked against the earliest release of the same song.
@@ -90,8 +101,9 @@ Use the **original** release year (not a remaster or compilation). Tags: `rock h
 ## Tests
 
 ```sh
-npm test           # rules + library checks
-npm run test:e2e   # plays a silent demo game in headless Chromium (needs chromium)
+npm test                # rules, library and room relay checks
+npm run test:e2e        # plays a silent demo game in headless Chromium (needs chromium)
+npm run test:e2e-room   # a host page and a phone page play two turns through a room
 ```
 
 Open `/?demo` to try the whole flow without Spotify (no sound).

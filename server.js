@@ -1,11 +1,13 @@
 #!/usr/bin/env node
-// Needledrop static server: serves public/, plus /config.json (the Spotify Client ID) and /api/health.
+// Needledrop static server: serves public/, plus /config.json (the Spotify Client ID), /api/health and the
+// room relay (/api/rooms, see rooms.js) for games where everyone plays on their own phone.
 // No dependencies. Settings come from environment variables or a .env file next to this script.
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { readFileSync, existsSync } from 'node:fs';
 import { extname, join, normalize, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { handleRooms } from './rooms.js';
 
 const root = dirname(fileURLToPath(import.meta.url));
 const envFile = join(root, '.env');
@@ -41,6 +43,7 @@ function send(res, status, body, type, extra = {}) {
 
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
+  if (url.pathname.startsWith('/api/rooms')) { await handleRooms(req, res, url); return; }
   if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'Method not allowed', 'text/plain');
   if (url.pathname === '/config.json') {
     return send(res, 200, JSON.stringify({ spotifyClientId: CLIENT_ID }), 'application/json', { 'Cache-Control': 'no-store' });

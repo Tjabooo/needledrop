@@ -1,6 +1,8 @@
 import * as G from './game.js';
 import { Spotify } from './spotify.js';
 import { t, lang, setLang, poss, decade } from './i18n.js';
+import { qrSvg } from './qr.js';
+import { RoomLink, createRoom, joinRoom } from './room.js';
 
 const $app = document.getElementById('app');
 const store = {
@@ -27,8 +29,18 @@ const ui = {
   playing: false, peek: false,
 };
 
+// Rooms: 'local' = one screen for the whole table (the original game), 'host' = this device runs the game and
+// Spotify while players follow on their own phones, 'guest' = this phone shows a host's game.
+let role = 'local';
+let hostRoom = store.get('nd.room', null); // host: { code, hostKey, members: { pid: { pid, key, name, born } } }
+let guestSeat = store.get('nd.guest', null); // guest: { code, pid, key, name, born }
+let link = null;
+let remote = null; // guest: the latest state from the host
+const room = { status: '', online: [], hostOnline: true, lastSent: '' };
+const pathCode = (location.pathname.match(/^\/([a-z]{4})\/?$/i) || [])[1]?.toUpperCase() || '';
+
 const saveSetup = () => store.set('nd.setup', setup);
-const saveGame = () => { store.set('nd.game', game); store.set('nd.undo', undoStack.slice(-25)); };
+const saveGame = () => { if (role === 'guest') return; store.set('nd.game', game); store.set('nd.undo', undoStack.slice(-25)); };
 const saveCache = () => store.set('nd.cache', cache);
 
 let toastTimer;
@@ -398,14 +410,400 @@ async function copySetupLink() {
   catch { ui.modal = { type: 'link', url }; render(); }
 }
 
+// ---------- rooms: host ----------
+
+const roomUrl = (code) => `${location.origin}/${code}`;
+const saveRoom = () => store.set('nd.room', hostRoom);
+
+async function openRoom() {
+  ui.busy = t('Opening a room…');
+  render();
+  try {
+    const r = await createRoom();
+    hostRoom = { code: r.code, hostKey: r.hostKey, members: {} };
+    saveRoom();
+    connectHost();
+    ui.modal = { type: 'room' };
+  } catch (e) { toast(t(e.message)); }
+  ui.busy = '';
+  render();
+}
+
+function connectHost() {
+  role = 'host';
+  link?.close();
+  room.lastSent = '';
+  link = new RoomLink(hostRoom.code, hostRoom.hostKey, {
+    onEvent: onHostEvent,
+    onStatus: async (s) => {
+      room.status = s;
+      if (s === 'gone') {
+        // The server restarted or the room expired: bring it back with the same code and seats.
+        try {
+          await createRoom({ code: hostRoom.code, hostKey: hostRoom.hostKey, members: Object.values(hostRoom.members) });
+          link?.open();
+        } catch (e) {
+          if (e.status === 409) { forgetRoom(); toast(t('The room code was taken while you were away. Open a new room.'), 7000); }
+          else setTimeout(() => link?.open(), 5000);
+        }
+      }
+      render();
+    },
+  });
+  link.open();
+}
+
+function addRemotePlayer(m) {
+  if (setup.players.some((p) => p.remote === m.pid)) return false;
+  const used = setup.players.map((p) => p.color);
+  const color = G.COLORS.find((c) => !used.includes(c)) || G.COLORS[setup.players.length % G.COLORS.length];
+  setup.players.push({ id: uid(), name: m.name, born: m.born || '', color, remote: m.pid });
+  saveSetup();
+  return true;
+}
+
+function onHostEvent(ev) {
+  switch (ev.type) {
+    case 'hello':
+      room.online = ev.online || [];
+      for (const m of ev.members || []) { hostRoom.members[m.pid] = m; addRemotePlayer(m); }
+      saveRoom();
+      room.lastSent = ''; // (re)connected: send the full state again
+      break;
+    case 'join':
+      hostRoom.members[ev.member.pid] = ev.member;
+      saveRoom();
+      if (addRemotePlayer(ev.member)) toast(t('{name} joined on their phone.', { name: ev.member.name }));
+      break;
+    case 'profile': {
+      if (hostRoom.members[ev.pid]) Object.assign(hostRoom.members[ev.pid], { name: ev.name, born: ev.born });
+      saveRoom();
+      const p = setup.players.find((x) => x.remote === ev.pid);
+      if (p) { p.name = ev.name; p.born = ev.born; saveSetup(); }
+      const gp = game?.players.find((x) => x.remote === ev.pid);
+      if (gp) { gp.name = ev.name; saveGame(); }
+      break;
+    }
+    case 'leave': {
+      const m = hostRoom.members[ev.pid];
+      delete hostRoom.members[ev.pid];
+      saveRoom();
+      setup.players = setup.players.filter((p) => p.remote !== ev.pid);
+      saveSetup();
+      if (m) toast(t('{name} left the room.', { name: m.name }));
+      break;
+    }
+    case 'presence': room.online = ev.online || []; break;
+    case 'act': onRemoteAct(ev.pid, ev.act); return;
+    default: return;
+  }
+  render();
+}
+
+// A move from a player's phone. Only their own moves count, and only when the game is at that step.
+function onRemoteAct(pid, m) {
+  if (!game || !m || typeof m.a !== 'string' || ui.busy || game.phase === 'over') return;
+  const p = game.players.find((x) => x.remote === pid);
+  if (!p) return;
+  const active = G.activePlayer(game).id === p.id;
+  const turn = game.turn;
+  switch (m.a) {
+    case 'draw': if (active && game.phase === 'draw') beginTurn(); return;
+    case 'play': if (active && turn) togglePlay(); return;
+    case 'replay': if (active && turn) replay(); return;
+    case 'skip': if (active) skipSong(); return;
+    case 'buy': if (active && G.canBuy(game)) act(() => G.buy(game)); return;
+    case 'slot': {
+      const slot = Number(m.slot);
+      if (!Number.isInteger(slot) || slot < 0 || slot > G.activePlayer(game).timeline.length) return;
+      if (game.phase === 'listen' && active) act(() => G.chooseSlot(game, slot));
+      else if (game.phase === 'challenge' && !active) {
+        snapshot();
+        G.removeChallenge(game, p.id);
+        if (!G.addChallenge(game, p.id, slot)) game = JSON.parse(undoStack.pop());
+        saveGame(); render();
+      }
+      return;
+    }
+    case 'unchallenge': if (game.phase === 'challenge') act(() => G.removeChallenge(game, p.id)); return;
+    case 'lock': if (active && game.phase === 'listen') act(() => G.lockIn(game)); return;
+    case 'reveal': if (active && game.phase === 'challenge') { ui.challenger = null; act(() => G.reveal(game)); } return;
+    case 'named': if (active && game.phase === 'reveal') act(() => G.setNamed(game, !game.turn.named)); return;
+    case 'next': if (active && game.phase === 'reveal') nextTurn(); return;
+    default:
+  }
+}
+
+// What the phones see. The song stays hidden until the reveal; the deck and history stay on this device.
+function roomState() {
+  let g = null;
+  if (game) {
+    const { used, log, ...rest } = game;
+    g = rest.turn && rest.phase !== 'reveal' ? { ...rest, turn: { ...rest.turn, card: null } } : rest;
+  }
+  const s = setup.settings;
+  return {
+    players: setup.players.map(({ id, name, color, remote: r }) => ({ id, name, color, remote: r || null })),
+    settings: { target: s.target, startTokens: s.startTokens, challenges: s.challenges, nameBonus: s.nameBonus },
+    packs: setup.packs.filter((p) => !p.off).map(({ songs, ...p }) => p),
+    game: g, playing: !!ui.playing, busy: !!(ui.busy && game),
+  };
+}
+
+function syncRoom() {
+  if (role !== 'host' || !link) return;
+  const s = JSON.stringify(roomState());
+  if (s === room.lastSent) return;
+  room.lastSent = s;
+  link.pushState(JSON.parse(s));
+}
+
+function forgetRoom() {
+  link?.close();
+  link = null;
+  hostRoom = null;
+  localStorage.removeItem('nd.room');
+  role = 'local';
+  room.online = [];
+  // Players who joined by phone stay in the game, played from this screen from now on.
+  for (const p of setup.players) delete p.remote;
+  saveSetup();
+  if (game) { for (const p of game.players) delete p.remote; saveGame(); }
+}
+
+async function closeRoom() {
+  if (!confirm(t('Close the room? Everyone on their phone is disconnected; their players stay in the game on this screen.'))) return;
+  try { await link?.post('close'); } catch { /* gone already */ }
+  forgetRoom();
+  ui.modal = null;
+  render();
+}
+
+// ---------- rooms: guest ----------
+
+async function joinGo() {
+  const code = ($app.querySelector('#joinCode')?.value || '').trim().toUpperCase();
+  const name = ($app.querySelector('#joinName')?.value || '').trim();
+  const born = ($app.querySelector('#joinBorn')?.value || '').replace(/\D/g, '');
+  if (!/^[A-Z]{4}$/.test(code)) { toast(t('The room code is four letters.')); return; }
+  if (!name) { toast(t('Type your name first.')); return; }
+  store.set('nd.myName', { name, born });
+  ui.busy = t('Joining…');
+  render();
+  try {
+    const r = await joinRoom(code, name, born);
+    if (role === 'host') { link?.close(); link = null; }
+    guestSeat = { code, pid: r.pid, key: r.key, name, born };
+    store.set('nd.guest', guestSeat);
+    connectGuest();
+  } catch (e) {
+    toast(e.status === 404 ? t('No room with that code. Check the letters on the host screen.') : t(e.message));
+  }
+  ui.busy = '';
+  render();
+}
+
+function connectGuest() {
+  role = 'guest';
+  remote = null;
+  game = null;
+  ui.view = 'guest';
+  ui.modal = null;
+  link?.close();
+  link = new RoomLink(guestSeat.code, guestSeat.key, {
+    onEvent: onGuestEvent,
+    onStatus: (s, info) => {
+      room.status = s;
+      if (s === 'gone') { endGuest(info?.room ? t('You are no longer in that room.') : t('That room is closed.')); return; }
+      render();
+    },
+  });
+  link.open();
+  if (location.pathname !== '/' + guestSeat.code) history.replaceState(null, '', '/' + guestSeat.code);
+}
+
+function myPlayerId() {
+  if (role !== 'guest' || !remote || !guestSeat) return null;
+  const mine = (p) => p.remote === guestSeat.pid;
+  return (remote.game?.players.find(mine) || remote.players.find(mine))?.id || null;
+}
+
+// The host can do everything; a phone only its own player's moves.
+const mayAct = (playerId) => role !== 'guest' || (!!playerId && playerId === myPlayerId());
+
+function onGuestEvent(ev) {
+  switch (ev.type) {
+    case 'hello': room.hostOnline = !!ev.host; break;
+    case 'host': room.hostOnline = !!ev.online; break;
+    case 'state': {
+      const before = remote?.game;
+      remote = ev.state || null;
+      game = remote?.game || null;
+      ui.playing = !!remote?.playing;
+      if (game?.phase !== 'challenge') ui.challenger = null;
+      // Buzz when it becomes this phone's turn.
+      const me = myPlayerId();
+      const mineNow = game && me && G.activePlayer(game)?.id === me && (game.phase === 'listen' || game.phase === 'draw');
+      const mineBefore = before && me && before.players[before.current]?.id === me && (before.phase === 'listen' || before.phase === 'draw') && before.round === game?.round;
+      if (mineNow && !mineBefore) navigator.vibrate?.([120, 60, 120]);
+      break;
+    }
+    case 'kicked': endGuest(t('The host removed you from the room.')); return;
+    case 'closed': endGuest(t('The host closed the room.')); return;
+    default: return;
+  }
+  render();
+}
+
+function endGuest(msg) {
+  link?.close();
+  link = null;
+  guestSeat = null;
+  remote = null;
+  localStorage.removeItem('nd.guest');
+  role = 'local';
+  game = store.get('nd.game', null); // this device's own game, untouched while it was a guest
+  undoStack = store.get('nd.undo', []);
+  ui.view = 'setup';
+  ui.challenger = null;
+  history.replaceState(null, '', '/');
+  startSpotify();
+  if (msg) toast(msg, 7000); else render();
+}
+
+async function leaveRoom() {
+  if (!confirm(t('Leave the room?'))) return;
+  try { await link?.post('leave'); } catch { /* host side cleans up anyway */ }
+  endGuest('');
+}
+
+async function saveProfile() {
+  const name = ($app.querySelector('#meName')?.value || '').trim();
+  const born = ($app.querySelector('#meBorn')?.value || '').replace(/\D/g, '');
+  if (!name) { toast(t('Type your name first.')); return; }
+  try {
+    await link.post('profile', { name, born });
+    Object.assign(guestSeat, { name, born });
+    store.set('nd.guest', guestSeat);
+    store.set('nd.myName', { name, born });
+    toast(t('Saved'));
+  } catch (e) { toast(t(e.message)); }
+}
+
+function sendAct(a, extra = {}) {
+  if (!link) return;
+  link.post('act', { act: { a, ...extra } }).catch((e) => toast(t(e.message)));
+}
+
 // ---------- rendering ----------
 
 function render() {
-  const html = ui.view === 'game' && game ? renderGame() : renderSetup();
+  let html;
+  if (ui.view === 'join') html = renderJoin();
+  else if (role === 'guest') html = remote?.game ? renderGame() : renderLobby();
+  else html = ui.view === 'game' && game ? renderGame() : renderSetup();
+  const busy = ui.busy || (role === 'guest' && remote?.busy ? t('Finding a record…') : '');
   $app.innerHTML = html + renderModal() + (ui.toast ? `<div class="toast" role="status">${esc(ui.toast)}</div>` : '') +
-    (ui.busy ? `<div class="busy"><div class="busy-disc"></div><p>${esc(ui.busy)}</p></div>` : '');
+    (busy ? `<div class="busy"><div class="busy-disc"></div><p>${esc(busy)}</p></div>` : '');
   const sel = $app.querySelector('.gap.selected, .card.new');
   if (sel) sel.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+  syncRoom();
+}
+
+function hostBanner() {
+  if (role !== 'guest') return '';
+  if (room.status === 'retry') return `<div class="netnote">${t('Reconnecting…')}</div>`;
+  if (!room.hostOnline) return `<div class="netnote">${t('The host screen is offline. Waiting for it to come back…')}</div>`;
+  return '';
+}
+
+function roomChip() {
+  if (role !== 'host' || !hostRoom) return '';
+  const n = room.online.length;
+  return `<button class="btn ghost small roomchip ${room.status === 'retry' ? 'warn' : ''}" data-action="roomModal" title="${t('Room: let more people join')}">
+    <span class="rc-code">${esc(hostRoom.code)}</span><span class="rc-n">📱 ${n}</span></button>`;
+}
+
+function roomPanel() {
+  if (role === 'guest') return '';
+  if (role !== 'host' || !hostRoom) {
+    return `<section class="panel room">
+      <h2>${t('Everyone on their own phone')}</h2>
+      <p>${t('Optional. Open a room and everyone joins from their phone with a code: they see the game and place their own cards. The music still plays from this device.')}</p>
+      <div class="inline"><button class="btn ghost" data-action="openRoom">${t('Open a room')}</button></div>
+    </section>`;
+  }
+  const url = roomUrl(hostRoom.code);
+  const phones = setup.players.filter((p) => p.remote).length;
+  return `<section class="panel room open">
+    <div class="head"><h2>${t('Room')}</h2><span class="meta">${room.status === 'retry' ? t('reconnecting…') : t('{n} on phones · {online} online', { n: phones, online: room.online.length })}</span></div>
+    <div class="room-box">
+      <div class="qr">${qrSvg(url)}</div>
+      <div class="room-side">
+        <span class="room-code">${esc(hostRoom.code)}</span>
+        <code class="copy" data-action="copy" data-text="${esc(url)}">${esc(url.replace(/^https?:\/\//, ''))}</code>
+        <p class="hint">${t('Scan or open the link and type a name. Everyone who joins shows up under Players. Playing from this screen too? Add yourself there.')}</p>
+        <div class="inline"><button class="btn ghost small" data-action="roomModal">${t('Show big')}</button><button class="btn ghost small" data-action="closeRoom">${t('Close room')}</button></div>
+      </div>
+    </div>
+  </section>`;
+}
+
+function renderJoin() {
+  const saved = store.get('nd.myName', { name: '', born: '' });
+  return `<div class="join">
+    <header class="top">${logo()}${langSwitch()}</header>
+    <section class="panel join-card">
+      <h1>${t('Join a game')}</h1>
+      <p class="lead">${t('Play along on your own phone. The music plays on the host screen.')}</p>
+      <label class="field">${t('Room code')}<input id="joinCode" value="${esc(ui.joinCode || '')}" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD" class="code-in"></label>
+      <label class="field">${t('Your name')}<input id="joinName" value="${esc(saved.name)}" maxlength="18" autocomplete="nickname"></label>
+      <label class="field">${t('Born (optional)')}<input id="joinBorn" value="${esc(saved.born)}" inputmode="numeric" maxlength="4" placeholder="${t('e.g. 1990')}"><small class="hint">${t('Helps the host pick songs from your era.')}</small></label>
+      <div class="inline"><button class="btn big" data-action="joinGo">${t('Join')}</button>${pathCode ? '' : `<button class="btn ghost" data-action="joinCancel">${t('Back')}</button>`}</div>
+    </section>
+  </div>`;
+}
+
+function renderLobby() {
+  if (!remote) {
+    return `<div class="guest"><header class="gtop">${logo(true)}<div class="gmenu">${langSwitch()}<button class="btn ghost small" data-action="leave">${t('Leave')}</button></div></header>
+      ${hostBanner()}<main class="lobby"><div class="busy-disc"></div><p class="lead">${t('Connecting to room {code}…', { code: esc(guestSeat?.code || '') })}</p></main></div>`;
+  }
+  const me = remote.players.find((p) => p.remote === guestSeat.pid);
+  const s = remote.settings;
+  const color = me?.color || 'var(--hot)';
+  const rules = [
+    t('First to {n} cards wins', { n: s.target }),
+    s.startTokens === 1 ? t('Everyone starts with 1 token') : t('Everyone starts with {n} tokens', { n: s.startTokens }),
+    s.challenges ? t('Challenges on') : t('Challenges off'),
+    s.nameBonus ? t('Name it for a token: on') : t('Name it for a token: off'),
+  ];
+  const owner = (id) => remote.players.find((p) => p.id === id);
+  return `<div class="guest">
+    <header class="gtop">${logo(true)}<span class="meta">${t('Room {code}', { code: esc(guestSeat.code) })}</span>
+      <div class="gmenu">${langSwitch()}<button class="btn ghost small" data-action="leave">${t('Leave')}</button></div></header>
+    ${hostBanner()}
+    <main class="lobby">
+      <p class="eyebrow" style="--pc:${color}">${t("You're in")}</p>
+      <h1 class="who" style="--pc:${color}">${esc(me?.name || guestSeat.name)}</h1>
+      <p class="lead">${t('Waiting for the host to start the game. Songs play from the host; you place your own cards here.')}</p>
+      <section class="panel">
+        <h2>${t('Players')}</h2>
+        <div class="roster">${remote.players.map((p) => `<span class="pchip ${p.remote === guestSeat.pid ? 'me' : ''}" style="--pc:${p.color}">${esc(p.name || t('Unnamed'))}${p.remote ? ' <i class="ph" title="' + t('on a phone') + '">📱</i>' : ''}</span>`).join('')}</div>
+      </section>
+      <section class="panel">
+        <h2>${t('Rules')}</h2>
+        <ul class="rules-list">${rules.map((r) => `<li>${esc(r)}</li>`).join('')}</ul>
+        ${remote.packs.length ? `<h3>${t('Songs')}</h3><ul class="rules-list">${remote.packs.map((p) => `<li>${esc(packName(p))}${p.owner && p.owner !== 'all' && owner(p.owner) ? ` <span class="owner" style="--oc:${owner(p.owner).color}">${esc(owner(p.owner).name)}</span>` : ''}</li>`).join('')}</ul>` : ''}
+      </section>
+      <section class="panel">
+        <h2>${t('You')}</h2>
+        <div class="inline wrap"><input id="meName" value="${esc(me?.name || guestSeat.name)}" maxlength="18" placeholder="${t('Your name')}">
+          <input id="meBorn" value="${esc(guestSeat.born || '')}" inputmode="numeric" maxlength="4" placeholder="${t('Born')}" class="born">
+          <button class="btn ghost" data-action="saveProfile">${t('Save')}</button></div>
+      </section>
+    </main>
+  </div>`;
 }
 
 function logo(small) {
@@ -469,6 +867,7 @@ function renderSetup() {
     <div class="player-row" style="--pc:${p.color}">
       <button class="swatch" data-action="color" data-id="${p.id}" title="${t('Change colour')}"></button>
       <input data-field="name" data-id="${p.id}" value="${esc(p.name)}" placeholder="${t('Player {n}', { n: i + 1 })}" maxlength="18">
+      ${p.remote ? `<span class="phone ${room.online.includes(p.remote) ? 'on' : ''}" title="${room.online.includes(p.remote) ? t('On their phone (connected)') : t('On their phone (not connected right now)')}">📱</span>` : ''}
       <input data-field="born" data-id="${p.id}" value="${esc(p.born)}" placeholder="${t('Born')}" inputmode="numeric" maxlength="4" class="born">
       <span class="order"><button class="icon" data-action="moveUp" data-id="${p.id}" title="${t('Move up')}" ${i ? '' : 'disabled'}>▲</button><button class="icon" data-action="moveDown" data-id="${p.id}" title="${t('Move down')}" ${i < setup.players.length - 1 ? '' : 'disabled'}>▼</button></span>
       <button class="btn ghost small" data-action="era" data-id="${p.id}" title="${t('Pick songs from the years they grew up')}">${t('Their era')}</button>
@@ -500,10 +899,12 @@ function renderSetup() {
 
   const inGame = game && game.phase !== 'over';
   return `<div class="setup">
-    <header class="top">${logo()}<p class="tag">${t('The song plays, you guess the year. One laptop, the whole table.')}</p>${langSwitch()}</header>
+    <header class="top">${logo()}<p class="tag">${t('The song plays, you guess the year. One laptop, the whole table.')}</p>
+      <span class="top-right"><button class="btn ghost small" data-action="joinOpen" title="${t('Someone else is hosting? Join their game on this device.')}">${t('Join a game')}</button>${langSwitch()}</span></header>
     <div class="setup-grid">
       <div class="col">
         ${spotifyPanel()}
+        ${roomPanel()}
         <section class="panel">
           <h2>${t('Players')}</h2>
           ${players ? `<p class="hint">${t('The top player starts. Use ▲ ▼ to change the order.')}</p>${players}` : `<p class="empty">${t("Add everyone who plays. Birth years are optional: they help pick songs from each person's era.")}</p>`}
@@ -562,9 +963,10 @@ function coins(n, max) {
 }
 
 function scoreboard() {
+  const me = myPlayerId();
   return game.players.map((p, i) => `
-    <div class="score ${i === game.current && game.phase !== 'over' ? 'active' : ''}" style="--pc:${p.color}">
-      <span class="sname">${esc(p.name)}</span>
+    <div class="score ${i === game.current && game.phase !== 'over' ? 'active' : ''} ${p.id === me ? 'me' : ''}" style="--pc:${p.color}">
+      <span class="sname">${esc(p.name)}${p.id === me ? ` <small class="you">${t('you')}</small>` : ''}</span>
       <span class="snum"><b>${p.timeline.length}</b>/${game.settings.target}</span>
       ${coins(p.tokens, game.settings.maxTokens)}
       <span class="bar"><span style="width:${Math.min(100, (p.timeline.length / game.settings.target) * 100)}%"></span></span>
@@ -579,6 +981,7 @@ function cardHtml(c, cls = '') {
   </div>`;
 }
 
+// mode: place (pick a gap) · challenge · watch (someone else is placing: their pick shows, nothing is clickable) · reveal · view
 function timelineHtml(p, mode) {
   const t = game.turn;
   const parts = [];
@@ -596,6 +999,8 @@ function timelineHtml(p, mode) {
         ${chp ? `<span class="flag">${esc(chp.name)}</span>` : ''}
         ${!mine && !chp ? '<span class="plus">+</span>' : ''}
       </button>`);
+    } else if (mode === 'watch') {
+      parts.push(t?.slot === i ? `<div class="gap selected"><span class="mystery" style="--pc:${p.color}">?</span></div>` : '<div class="gap static"></div>');
     } else if (mode === 'reveal' && res && !res.correct && t.slot === i && !t.bought) {
       parts.push(`<div class="gap ghost-wrong"><span class="mystery wrong">✕</span></div>`);
     } else {
@@ -621,9 +1026,26 @@ function vinyl(p, showArt) {
   </div>`;
 }
 
+function gameMenu() {
+  if (role === 'guest') {
+    return `<div class="gmenu">
+      <button class="btn ghost small" data-action="timelines" title="${tr("Everyone's timelines")}">${tr('Timelines')}</button>${langSwitch()}
+      <button class="btn ghost small" data-action="leave">${tr('Leave')}</button></div>`;
+  }
+  return `<div class="gmenu">${roomChip()}
+    <button class="btn ghost small" data-action="timelines" title="${tr("Everyone's timelines")}">${tr('Timelines')}</button>
+    <button class="btn ghost small" data-action="undo" ${undoStack.length ? '' : 'disabled'} title="${tr('Undo (U)')}">${tr('Undo')}</button>
+    <button class="btn ghost small" data-action="setup">${tr('Setup')}</button>${langSwitch()}
+  </div>`;
+}
+
 function renderGame() {
   const p = G.activePlayer(game);
   const t = game.turn;
+  const mine = mayAct(p.id); // this screen may play the active player's turn
+  const me = myPlayerId();
+  const guest = role === 'guest';
+  const waiting = (s) => `<p class="waiting">${s}</p>`;
   let stage = '';
   let tlMode = 'view';
 
@@ -633,14 +1055,15 @@ function renderGame() {
     stage = `<div class="stage-center">
       <p class="eyebrow" style="--pc:${p.color}">${tr('Up next')}</p>
       <h1 class="who" style="--pc:${p.color}">${esc(p.name)}</h1>
-      <button class="btn big" data-action="draw">${tr('Play {poss} song', { poss: esc(poss(p.name)) })}</button>
+      ${mine ? `<button class="btn big" data-action="draw">${guest ? tr('Play my song') : tr('Play {poss} song', { poss: esc(poss(p.name)) })}</button>`
+        : waiting(tr('Waiting for {name} to start their song…', { name: esc(p.name) }))}
     </div>`;
-  } else if (game.phase === 'listen') {
+  } else if (game.phase === 'listen' && mine) {
     tlMode = 'place';
     stage = `<div class="stage-split">
       ${vinyl(p, false)}
       <div class="stage-side">
-        <p class="eyebrow" style="--pc:${p.color}">${tr('{poss} turn', { poss: esc(poss(p.name)) })}</p>
+        <p class="eyebrow" style="--pc:${p.color}">${guest ? tr('Your turn') : tr('{poss} turn', { poss: esc(poss(p.name)) })}</p>
         <h1>${tr('When was this released?')}</h1>
         <p class="lead">${game.settings.nameBonus ? tr('Pick the gap on your timeline where this song fits, and say the artist and title out loud for a bonus token.') : tr('Pick the gap on your timeline where this song fits.')}</p>
         <div class="controls">
@@ -652,24 +1075,39 @@ function renderGame() {
         <button class="btn big lock" data-action="lock" ${t.slot == null ? 'disabled' : ''}>${t.slot == null ? tr('Pick a gap first') : tr('Lock it in')}</button>
       </div>
     </div>`;
+  } else if (game.phase === 'listen') {
+    tlMode = 'watch';
+    const mePlayer = game.players.find((x) => x.id === me);
+    stage = `<div class="stage-split">
+      ${vinyl(p, false)}
+      <div class="stage-side">
+        <p class="eyebrow" style="--pc:${p.color}">${tr('{poss} turn', { poss: esc(poss(p.name)) })}</p>
+        <h1>${tr('{name} is guessing', { name: esc(p.name) })}</h1>
+        <p class="lead">${tr('Their pick shows up on their timeline below.')}${game.settings.challenges && mePlayer?.tokens ? ' ' + tr('Think they are wrong? You can challenge once they lock it in.') : ''}</p>
+      </div>
+    </div>`;
   } else if (game.phase === 'challenge') {
     tlMode = 'challenge';
-    const others = game.players.filter((x) => x.id !== p.id);
+    let others = game.players.filter((x) => x.id !== p.id);
+    if (guest) others = others.filter((o) => o.id === me);
+    const activeHere = guest && me === p.id;
     stage = `<div class="stage-split">
       ${vinyl(p, false)}
       <div class="stage-side">
         <p class="eyebrow" style="--pc:${p.color}">${tr('Challenge?')}</p>
-        <h1>${tr('Think {name} got it wrong?', { name: esc(p.name) })}</h1>
-        <p class="lead">${tr('Spend a token and pick a different gap. If {name} is wrong and you are right, the card is yours.', { name: esc(p.name) })}</p>
-        <div class="challengers">
+        ${activeHere ? `<h1>${tr('Locked in')}</h1><p class="lead">${tr('The others can challenge your pick now. Reveal the song when they are done.')}</p>
+          ${t.challengers.length ? `<p class="lead">${t.challengers.map((c) => { const cp = game.players.find((x) => x.id === c.player); return `<b style="color:${cp.color}">${esc(cp.name)}</b>`; }).join(', ')} ${tr('challenged.')}</p>` : ''}`
+        : `<h1>${tr('Think {name} got it wrong?', { name: esc(p.name) })}</h1>
+        <p class="lead">${tr('Spend a token and pick a different gap. If {name} is wrong and you are right, the card is yours.', { name: esc(p.name) })}</p>`}
+        ${others.length ? `<div class="challengers">
           ${others.map((o) => {
             const c = t.challengers.find((x) => x.player === o.id);
             const active = ui.challenger === o.id;
             return `<button class="chal ${active ? 'on' : ''} ${c ? 'placed' : ''}" style="--pc:${o.color}" data-action="challenger" data-id="${o.id}" ${!c && o.tokens < 1 ? 'disabled' : ''}>
               <b>${esc(o.name)}</b> ${coins(o.tokens, 0)}<small>${tr(c ? 'challenging · tap to cancel' : active ? 'now click a gap' : o.tokens < 1 ? 'no tokens' : 'challenge')}</small></button>`;
           }).join('')}
-        </div>
-        <button class="btn big lock" data-action="reveal">${tr('Reveal the song')}</button>
+        </div>` : ''}
+        ${mine ? `<button class="btn big lock" data-action="reveal">${tr('Reveal the song')}</button>` : waiting(tr('Waiting for {name} to reveal…', { name: esc(p.name) }))}
       </div>
     </div>`;
   } else if (game.phase === 'reveal') {
@@ -682,6 +1120,11 @@ function renderGame() {
     else if (winner) verdict = `<span class="steal" style="--pc:${winner.color}">${tr('Wrong spot. {name} steals it!', { name: esc(winner.name) })}</span>`;
     else verdict = `<span class="bad">${tr('Wrong spot. The card is out.')}</span>`;
     const next = game.winner ? tr('See who won') : G.goesAgain(game) ? tr('{name} goes again', { name: esc(p.name) }) : tr('Next: {name}', { name: esc(game.players[(game.current + 1) % game.players.length].name) });
+    const named = game.settings.nameBonus && !r.bought
+      ? (mine ? `<button class="named ${t.named ? 'on' : ''}" data-action="named">
+          <span class="box">${t.named ? '✓' : ''}</span><span>${tr('{name} named the artist <i>and</i> the title', { name: esc(p.name) })}${r.correct ? `<small>${tr('Right spot too: another turn')}</small>` : ''}</span><span class="cost">+1</span></button>`
+        : t.named ? `<p class="lead">${tr('{name} named the artist and the title: +1 token.', { name: esc(p.name) })}</p>` : '')
+      : '';
     stage = `<div class="stage-split">
       ${vinyl(p, true)}
       <div class="stage-side reveal">
@@ -691,39 +1134,47 @@ function renderGame() {
           <span class="cartist">${esc(t.card.a)}</span>
         </div>
         <p class="verdict">${verdict}</p>
-        ${game.settings.nameBonus && !r.bought ? `<button class="named ${t.named ? 'on' : ''}" data-action="named">
-          <span class="box">${t.named ? '✓' : ''}</span><span>${tr('{name} named the artist <i>and</i> the title', { name: esc(p.name) })}${r.correct ? `<small>${tr('Right spot too: another turn')}</small>` : ''}</span><span class="cost">+1</span></button>` : ''}
-        <div class="inline"><button class="btn big" data-action="next">${next} →</button>
-        <button class="btn ghost" data-action="play">${tr(ui.playing ? '❚❚ Pause' : '▶ Keep listening')}</button></div>
+        ${named}
+        ${mine ? `<div class="inline wrap"><button class="btn big" data-action="next">${next} →</button>
+        <button class="btn ghost" data-action="play">${tr(ui.playing ? '❚❚ Pause' : '▶ Keep listening')}</button></div>`
+          : waiting(tr('Waiting for {name} to move on…', { name: esc(p.name) }))}
       </div>
     </div>`;
   }
 
-  return `<div class="game">
-    <header class="gtop">${logo(true)}<div class="scores">${scoreboard()}</div>
-      <div class="gmenu">
-        <button class="btn ghost small" data-action="timelines" title="${tr("Everyone's timelines")}">${tr('Timelines')}</button>
-        <button class="btn ghost small" data-action="undo" ${undoStack.length ? '' : 'disabled'} title="${tr('Undo (U)')}">${tr('Undo')}</button>
-        <button class="btn ghost small" data-action="setup">${tr('Setup')}</button>${langSwitch()}
-      </div></header>
+  const spectator = guest && !me ? `<div class="netnote">${tr('You joined during this game: you are watching, and you play in the next one.')}</div>` : '';
+  const myTl = guest && me && me !== p.id ? (() => {
+    const mp = game.players.find((x) => x.id === me);
+    return `<section class="tl-wrap mine" style="--pc:${mp.color}"><div class="tl-head">${tr('Your timeline')} <span class="meta">${mp.timeline.length === 1 ? tr('1 card') : tr('{n} cards', { n: mp.timeline.length })}</span></div>${timelineHtml(mp, 'view')}</section>`;
+  })() : '';
+
+  return `<div class="game ${guest ? 'is-guest' : ''}">
+    <header class="gtop">${logo(true)}<div class="scores">${scoreboard()}</div>${gameMenu()}</header>
+    ${hostBanner()}${spectator}
     <main class="stage">${stage}</main>
     <section class="tl-wrap" style="--pc:${p.color}">
-      <div class="tl-head">${tr('{who} timeline', { who: `<b>${esc(poss(p.name))}</b>` })} <span class="meta">${p.timeline.length === 1 ? tr('1 card') : tr('{n} cards', { n: p.timeline.length })}${tlMode === 'challenge' && ui.challenger ? ` · ${tr('{name} is picking a gap', { name: esc(game.players.find((x) => x.id === ui.challenger).name) })}` : ''}</span></div>
+      <div class="tl-head">${guest && me === p.id ? tr('Your timeline') : tr('{who} timeline', { who: `<b>${esc(poss(p.name))}</b>` })} <span class="meta">${p.timeline.length === 1 ? tr('1 card') : tr('{n} cards', { n: p.timeline.length })}${tlMode === 'challenge' && ui.challenger ? ` · ${tr('{name} is picking a gap', { name: esc(game.players.find((x) => x.id === ui.challenger).name) })}` : ''}</span></div>
       ${timelineHtml(p, tlMode)}
     </section>
+    ${myTl}
   </div>`;
 }
 
 function renderOver() {
   const st = G.standings(game);
   const w = game.players.find((p) => p.id === game.winner) || game.players.find((p) => p.id === st[0].id);
-  return `<div class="game over">
-    <header class="gtop">${logo(true)}<div class="scores">${scoreboard()}</div><div class="gmenu"><button class="btn ghost small" data-action="undo">${t('Undo')}</button>${langSwitch()}</div></header>
+  const guest = role === 'guest';
+  const buttons = guest ? `<p class="waiting">${t('Waiting for the host to start a new game…')}</p>`
+    : `<div class="inline"><button class="btn big" data-action="again">${t('Play again')}</button><button class="btn ghost" data-action="setup">${t('Setup')}</button></div>`;
+  const menu = guest ? gameMenu() : `<div class="gmenu">${roomChip()}<button class="btn ghost small" data-action="undo">${t('Undo')}</button>${langSwitch()}</div>`;
+  return `<div class="game over ${guest ? 'is-guest' : ''}">
+    <header class="gtop">${logo(true)}<div class="scores">${scoreboard()}</div>${menu}</header>
+    ${hostBanner()}
     <main class="stage"><div class="stage-center">
       <p class="eyebrow" style="--pc:${w.color}">${t('Winner')}</p>
       <h1 class="who" style="--pc:${w.color}">${esc(w.name)}</h1>
       <ol class="podium">${st.map((s) => `<li style="--pc:${s.color}"><b>${esc(s.name)}</b><span>${t('{cards} cards · {tokens} tokens', { cards: s.cards, tokens: s.tokens })}</span></li>`).join('')}</ol>
-      <div class="inline"><button class="btn big" data-action="again">${t('Play again')}</button><button class="btn ghost" data-action="setup">${t('Setup')}</button></div>
+      ${buttons}
     </div></main>
     <section class="tl-wrap all">${game.players.map((p) => `<div class="tl-head" style="--pc:${p.color}"><b>${esc(p.name)}</b></div>${timelineHtml(p, 'view')}`).join('')}</section>
   </div>`;
@@ -740,6 +1191,13 @@ function renderModal() {
         <small>${l.items?.total ?? l.tracks?.total ?? ''}</small></button>`).join('') || `<p class="empty">${t('No playlists found.')}</p>`}</div>`;
   } else if (m.type === 'timelines') {
     body = `<h2>${t("Everyone's timelines")}</h2>${game.players.map((p) => `<div class="tl-head" style="--pc:${p.color}"><b>${esc(p.name)}</b> ${coins(p.tokens, 0)}</div>${timelineHtml(p, 'view')}`).join('')}`;
+  } else if (m.type === 'room' && hostRoom) {
+    const url = roomUrl(hostRoom.code);
+    body = `<div class="room-big"><div class="qr">${qrSvg(url)}</div><div>
+      <h2>${t('Join on your phone')}</h2>
+      <p class="hint">${t('Scan the code, or open {url} and type the code:', { url: `<b>${esc(location.host)}</b>` })}</p>
+      <span class="room-code huge">${esc(hostRoom.code)}</span>
+      <p class="hint">${t('The music keeps playing from this device.')}</p></div></div>`;
   } else if (m.type === 'link') {
     body = `<h2>${t('Setup link')}</h2><p class="hint">${t('Copy this link:')}</p><textarea readonly>${esc(m.url)}</textarea>`;
   }
@@ -755,7 +1213,34 @@ $app.addEventListener('click', async (e) => {
   const a = el.dataset.action;
   const id = el.dataset.id;
   const player = id && setup.players.find((p) => p.id === id);
+  if (role === 'guest' && game && ['draw', 'play', 'replay', 'skip', 'buy', 'lock', 'reveal', 'named', 'next', 'slot', 'challenger'].includes(a)) {
+    const me = myPlayerId();
+    if (a === 'slot') {
+      const slot = +el.dataset.slot;
+      if (game.phase === 'listen' && mayAct(G.activePlayer(game).id)) { game.turn.slot = slot; render(); sendAct('slot', { slot }); }
+      else if (game.phase === 'challenge' && ui.challenger === me) { ui.challenger = null; render(); sendAct('slot', { slot }); }
+      return;
+    }
+    if (a === 'challenger') {
+      if (id !== me || game.phase !== 'challenge') return;
+      if (game.turn.challengers.some((x) => x.player === me)) { ui.challenger = null; sendAct('unchallenge'); }
+      else ui.challenger = ui.challenger ? null : me;
+      render();
+      return;
+    }
+    if (a === 'buy' && !G.canBuy(game)) return;
+    sendAct(a);
+    return;
+  }
   switch (a) {
+    case 'openRoom': return openRoom();
+    case 'closeRoom': return closeRoom();
+    case 'roomModal': ui.modal = { type: 'room' }; render(); return;
+    case 'joinOpen': ui.view = 'join'; ui.joinCode = ''; render(); $app.querySelector('#joinCode')?.focus(); return;
+    case 'joinCancel': ui.view = game && game.phase !== 'over' ? 'game' : 'setup'; render(); return;
+    case 'joinGo': return joinGo();
+    case 'leave': return leaveRoom();
+    case 'saveProfile': return saveProfile();
     case 'saveClient': {
       const v = $app.querySelector('#clientId').value.trim();
       if (!/^[0-9a-f]{32}$/i.test(v)) { toast(t('That does not look like a Client ID (32 letters and digits).')); return; }
@@ -771,6 +1256,12 @@ $app.addEventListener('click', async (e) => {
     case 'copy': navigator.clipboard?.writeText(el.dataset.text).then(() => toast(t('Copied'))); return;
     case 'addPlayer': return addPlayer();
     case 'removePlayer':
+      if (player?.remote && link && role === 'host') {
+        if (!confirm(t('Remove {name} from the room?', { name: player.name }))) return;
+        link.post('kick', { pid: player.remote }).catch(() => {});
+        delete hostRoom.members[player.remote];
+        saveRoom();
+      }
       setup.players = setup.players.filter((p) => p.id !== id);
       setup.packs.forEach((p) => { if (p.owner === id) p.owner = 'all'; });
       if (ui.builder.owner === id) ui.builder.owner = 'all';
@@ -890,10 +1381,13 @@ $app.addEventListener('input', (e) => {
 
 $app.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && e.target.dataset.field === 'other') { e.preventDefault(); addPack(); }
+  if (e.key === 'Enter' && ['joinCode', 'joinName', 'joinBorn'].includes(e.target.id)) { e.preventDefault(); joinGo(); }
+  if (e.key === 'Enter' && ['meName', 'meBorn'].includes(e.target.id)) { e.preventDefault(); saveProfile(); }
   if (e.key === 'Enter' && e.target.id === 'clientId') { e.preventDefault(); $app.querySelector('[data-action="saveClient"]').click(); }
 });
 
 document.addEventListener('keydown', (e) => {
+  if (role === 'guest') { if (e.key === 'Escape' && ui.modal) { ui.modal = null; render(); } return; }
   if (ui.view !== 'game' || !game || e.target.closest?.('input, textarea, select') || e.ctrlKey || e.metaKey || e.altKey) return;
   if (ui.busy) return;
   if (e.key === 'Escape' && ui.modal) { ui.modal = null; render(); return; }
@@ -939,6 +1433,23 @@ async function boot() {
     history.replaceState(null, '', location.pathname);
   }
 
+  if (pathCode) {
+    if (guestSeat?.code === pathCode) connectGuest();
+    else if (hostRoom?.code === pathCode) { history.replaceState(null, '', '/'); connectHost(); }
+    else { ui.view = 'join'; ui.joinCode = pathCode; }
+  } else if (guestSeat) connectGuest();
+  else if (hostRoom) connectHost();
+
+  if (role !== 'guest') await startSpotify();
+  if (game && game.phase === 'listen') ui.started = null;
+  render();
+  if (ui.view === 'join') $app.querySelector(ui.joinCode ? '#joinName' : '#joinCode')?.focus();
+}
+
+let spotifyStarted = false;
+async function startSpotify() {
+  if (spotifyStarted) return;
+  spotifyStarted = true;
   makeSpotify();
   if (sp) {
     const err = await sp.handleRedirect();
@@ -949,8 +1460,6 @@ async function boot() {
       refreshDevices();
     }
   }
-  if (game && game.phase === 'listen') ui.started = null;
-  render();
 }
 
 boot();

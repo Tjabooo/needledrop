@@ -175,6 +175,7 @@ export function newGame(setup) {
     players: setup.players.map((p, i) => ({
       id: p.id, name: p.name, color: p.color || COLORS[i % COLORS.length],
       tokens: settings.startTokens, timeline: [],
+      ...(p.remote ? { remote: p.remote } : {}), // seat of a player on their own phone (room games)
     })),
     current: 0,
     round: 1,
