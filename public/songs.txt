@@ -5,10 +5,16 @@
 # "extreme" marks death/black/thrash-heavy tracks that can be left out in setup.
 
 # 1960s
+1960 | Chubby Checker | The Twist | pop dance
 1961 | Ben E. King | Stand by Me | soul
 1961 | Elvis Presley | Can't Help Falling in Love | pop
+1962 | Booker T. & the M.G.'s | Green Onions | soul
+1962 | Ray Charles | I Can't Stop Loving You | soul country
+1962 | Little Eva | The Loco-Motion | pop dance
 1963 | The Beatles | Twist and Shout | rock pop
 1963 | The Beach Boys | Surfin' U.S.A. | pop rock
+1963 | The Ronettes | Be My Baby | pop
+1963 | Johnny Cash | Ring of Fire | country
 1964 | The Kinks | You Really Got Me | rock
 1964 | The Animals | The House of the Rising Sun | rock
 1964 | The Supremes | Baby Love | soul pop
@@ -16,6 +22,10 @@
 1964 | Martha and the Vandellas | Dancing in the Street | soul
 1964 | Sam Cooke | A Change Is Gonna Come | soul
 1964 | The Righteous Brothers | You've Lost That Lovin' Feelin' | pop soul
+1964 | Dusty Springfield | I Only Want to Be with You | pop
+1964 | Roy Orbison | Oh, Pretty Woman | pop rock
+1964 | Petula Clark | Downtown | pop
+1964 | The Shangri-Las | Leader of the Pack | pop
 1965 | The Rolling Stones | (I Can't Get No) Satisfaction | rock
 1965 | The Beatles | Help! | rock pop
 1965 | The Who | My Generation | rock
@@ -24,11 +34,17 @@
 1965 | James Brown | I Got You (I Feel Good) | soul
 1965 | Tom Jones | It's Not Unusual | pop
 1965 | Simon & Garfunkel | The Sound of Silence | pop
+1965 | Wilson Pickett | In the Midnight Hour | soul
+1965 | The Righteous Brothers | Unchained Melody | pop soul
+1965 | Sonny & Cher | I Got You Babe | pop
+1965 | The Four Tops | I Can't Help Myself (Sugar Pie Honey Bunch) | soul
 1966 | The Rolling Stones | Paint It Black | rock
 1966 | The Beach Boys | Good Vibrations | pop
 1966 | The Supremes | You Can't Hurry Love | soul pop
 1966 | Nancy Sinatra | These Boots Are Made for Walkin' | pop
 1966 | The Monkees | I'm a Believer | pop
+1966 | Ike & Tina Turner | River Deep – Mountain High | soul pop
+1966 | Frank Sinatra | Strangers in the Night | pop
 1967 | The Doors | Light My Fire | rock
 1967 | The Doors | Break On Through (To the Other Side) | rock
 1967 | Jimi Hendrix | Purple Haze | rock
@@ -38,6 +54,10 @@
 1967 | Louis Armstrong | What a Wonderful World | pop
 1967 | Procol Harum | A Whiter Shade of Pale | rock pop
 1967 | The Turtles | Happy Together | pop
+1967 | Marvin Gaye & Tammi Terrell | Ain't No Mountain High Enough | soul
+1967 | Frankie Valli | Can't Take My Eyes Off You | pop
+1967 | The Monkees | Daydream Believer | pop
+1967 | Lulu | To Sir with Love | pop
 1968 | The Beatles | Hey Jude | rock pop
 1968 | Jimi Hendrix | All Along the Watchtower | rock
 1968 | Steppenwolf | Born to Be Wild | rock hardrock
@@ -48,6 +68,8 @@
 1968 | Dusty Springfield | Son of a Preacher Man | soul pop
 1968 | The Zombies | Time of the Season | rock pop
 1968 | Simon & Garfunkel | Mrs. Robinson | pop
+1968 | Desmond Dekker & the Aces | Israelites | reggae
+1968 | Sly and the Family Stone | Everyday People | soul
 1969 | The Beatles | Come Together | rock
 1969 | The Rolling Stones | Gimme Shelter | rock
 1969 | Creedence Clearwater Revival | Fortunate Son | rock
@@ -56,6 +78,10 @@
 1969 | Elvis Presley | Suspicious Minds | pop
 1969 | David Bowie | Space Oddity | rock pop
 1969 | The Jackson 5 | I Want You Back | soul pop
+1969 | The Archies | Sugar, Sugar | pop
+1969 | Jackson 5 | I Want You Back | soul pop
+1969 | Johnny Cash | A Boy Named Sue | country
+1969 | Jimmy Cliff | Many Rivers to Cross | reggae
 
 # 1970s
 1970 | Black Sabbath | Paranoid | metal hardrock
@@ -72,6 +98,8 @@
 1970 | The Jackson 5 | ABC | soul pop
 1970 | Elton John | Your Song | pop
 1970 | Carpenters | (They Long to Be) Close to You | pop
+1970 | Edwin Starr | War | soul
+1970 | The Carpenters | (They Long to Be) Close to You | pop
 1971 | Led Zeppelin | Stairway to Heaven | rock hardrock
 1971 | Led Zeppelin | Black Dog | rock hardrock
 1971 | The Rolling Stones | Brown Sugar | rock
@@ -84,6 +112,10 @@
 1971 | Al Green | Let's Stay Together | soul
 1971 | Rod Stewart | Maggie May | rock pop
 1971 | Elton John | Tiny Dancer | pop
+1971 | John Denver | Take Me Home, Country Roads | country
+1971 | Carole King | It's Too Late | pop
+1971 | Isaac Hayes | Theme from Shaft | soul
+1971 | Harry Nilsson | Without You | pop
 1972 | Deep Purple | Smoke on the Water | rock hardrock
 1972 | Deep Purple | Highway Star | rock hardrock
 1972 | Alice Cooper | School's Out | rock hardrock
@@ -97,6 +129,9 @@
 1972 | Neil Young | Heart of Gold | rock
 1972 | Eagles | Take It Easy | rock country
 1972 | The Doobie Brothers | Listen to the Music | rock
+1972 | Johnny Nash | I Can See Clearly Now | reggae pop
+1972 | Curtis Mayfield | Superfly | soul
+1972 | The Temptations | Papa Was a Rollin' Stone | soul
 1973 | Pink Floyd | Money | rock
 1973 | Lynyrd Skynyrd | Free Bird | rock
 1973 | Aerosmith | Dream On | rock hardrock
@@ -110,11 +145,27 @@
 1973 | Wings | Live and Let Die | rock
 1973 | Wings | Band on the Run | rock pop
 1973 | Billy Joel | Piano Man | pop
+1973 | Bob Marley & The Wailers | Stir It Up | reggae
+1973 | Roberta Flack | Killing Me Softly with His Song | soul
+1973 | Stevie Wonder | You Are the Sunshine of My Life | soul pop
+1973 | Bob Marley & The Wailers | Get Up, Stand Up | reggae
+1973 | Gladys Knight & the Pips | Midnight Train to Georgia | soul
+1973 | Dolly Parton | Jolene | country
+1973 | Jim Croce | Bad, Bad Leroy Brown | pop
+1973 | Barry White | I'm Gonna Love You Just a Little More Baby | soul
+1973 | Kool & the Gang | Jungle Boogie | soul
+1973 | Terry Jacks | Seasons in the Sun | pop
+1973 | Blue Swede | Hooked on a Feeling | pop swedish
 1974 | Lynyrd Skynyrd | Sweet Home Alabama | rock
 1974 | Queen | Killer Queen | rock
 1974 | ABBA | Waterloo | pop swedish
 1974 | Bachman-Turner Overdrive | You Ain't Seen Nothing Yet | rock
 1974 | Barry White | You're the First, the Last, My Everything | soul
+1974 | Carl Douglas | Kung Fu Fighting | dance pop
+1974 | George McCrae | Rock Your Baby | dance soul
+1974 | Dolly Parton | I Will Always Love You | country
+1974 | Eric Clapton | I Shot the Sheriff | reggae rock
+1974 | Labelle | Lady Marmalade | soul dance
 1975 | Queen | Bohemian Rhapsody | rock
 1975 | AC/DC | It's a Long Way to the Top (If You Wanna Rock 'n' Roll) | hardrock rock
 1975 | AC/DC | T.N.T. | hardrock rock
@@ -130,6 +181,11 @@
 1975 | KC and the Sunshine Band | That's the Way (I Like It) | dance soul
 1975 | Hot Chocolate | You Sexy Thing | soul pop
 1975 | Rod Stewart | Sailing | pop rock
+1975 | Van McCoy | The Hustle | dance
+1975 | Glen Campbell | Rhinestone Cowboy | country
+1975 | Earth, Wind & Fire | Shining Star | soul
+1975 | Captain & Tennille | Love Will Keep Us Together | pop
+1975 | Bee Gees | Jive Talkin' | dance pop
 1976 | Thin Lizzy | The Boys Are Back in Town | rock hardrock
 1976 | Boston | More Than a Feeling | rock
 1976 | Kansas | Carry On Wayward Son | rock
@@ -147,6 +203,10 @@
 1976 | Boney M. | Daddy Cool | dance pop
 1976 | Stevie Wonder | Sir Duke | soul
 1976 | Elton John & Kiki Dee | Don't Go Breaking My Heart | pop
+1976 | Wild Cherry | Play That Funky Music | soul
+1976 | Rose Royce | Car Wash | soul dance
+1976 | Johnnie Taylor | Disco Lady | soul dance
+1976 | Thelma Houston | Don't Leave Me This Way | dance soul
 1977 | Fleetwood Mac | Go Your Own Way | rock pop
 1977 | Fleetwood Mac | Dreams | rock pop
 1977 | Fleetwood Mac | The Chain | rock
@@ -170,6 +230,11 @@
 1977 | Bee Gees | How Deep Is Your Love | pop
 1977 | Donna Summer | I Feel Love | dance
 1977 | Commodores | Easy | soul
+1977 | Bob Marley & The Wailers | Jamming | reggae
+1977 | Boney M. | Ma Baker | dance
+1977 | Baccara | Yes Sir, I Can Boogie | dance
+1977 | Kenny Rogers | Lucille | country
+1977 | Emotions | Best of My Love | soul dance
 1978 | Van Halen | Eruption | hardrock metal
 1978 | Van Halen | Ain't Talkin' 'bout Love | hardrock rock
 1978 | Dire Straits | Sultans of Swing | rock
@@ -189,6 +254,9 @@
 1978 | Boney M. | Rasputin | dance pop
 1978 | John Travolta & Olivia Newton-John | You're the One That I Want | pop
 1978 | Rod Stewart | Da Ya Think I'm Sexy? | pop dance
+1978 | Kenny Rogers | The Gambler | country
+1978 | Sylvester | You Make Me Feel (Mighty Real) | dance
+1978 | Exile | Kiss You All Over | pop
 1979 | AC/DC | Highway to Hell | hardrock rock
 1979 | Pink Floyd | Another Brick in the Wall, Pt. 2 | rock
 1979 | Pink Floyd | Comfortably Numb | rock
@@ -211,6 +279,12 @@
 1979 | Sister Sledge | We Are Family | dance soul
 1979 | Earth, Wind & Fire | Boogie Wonderland | soul dance
 1979 | Michael Jackson | Don't Stop 'Til You Get Enough | pop soul dance
+1979 | The Sugarhill Gang | Rapper's Delight | hiphop
+1979 | Anita Ward | Ring My Bell | dance
+1979 | Charlie Daniels Band | The Devil Went Down to Georgia | country
+1979 | Village People | In the Navy | dance
+1979 | Michael Jackson | Rock with You | soul pop
+1979 | Ted Gärdestad | Satellit | pop swedish
 
 # 1980s
 1980 | AC/DC | Back in Black | hardrock rock
@@ -232,6 +306,15 @@
 1980 | ABBA | Super Trouper | pop swedish
 1980 | Kool & the Gang | Celebration | soul dance
 1980 | Bob Marley & The Wailers | Could You Be Loved | reggae
+1980 | Diana Ross | Upside Down | dance soul
+1980 | Lipps Inc. | Funkytown | dance
+1980 | Dolly Parton | 9 to 5 | country pop
+1980 | Bob Marley & The Wailers | Redemption Song | reggae
+1980 | Kurtis Blow | The Breaks | hiphop
+1980 | Olivia Newton-John | Magic | pop
+1980 | Irene Cara | Fame | pop dance
+1980 | Yarbrough & Peoples | Don't Stop the Music | soul dance
+1980 | Tomas Ledin | Just nu! | pop swedish
 1981 | Journey | Don't Stop Believin' | rock
 1981 | Rush | Tom Sawyer | rock
 1981 | Foreigner | Juke Box Hero | rock
@@ -243,6 +326,13 @@
 1981 | Depeche Mode | Just Can't Get Enough | pop dance
 1981 | Kim Wilde | Kids in America | pop
 1981 | Men at Work | Down Under | pop rock
+1981 | Olivia Newton-John | Physical | pop
+1981 | Rick James | Super Freak | soul
+1981 | Kim Carnes | Bette Davis Eyes | pop
+1981 | Lionel Richie & Diana Ross | Endless Love | pop soul
+1981 | Shakin' Stevens | This Ole House | pop
+1981 | UB40 | One in Ten | reggae
+1981 | Freestyle | Vill ha dig | pop dance swedish
 1982 | Iron Maiden | Run to the Hills | metal
 1982 | Iron Maiden | The Number of the Beast | metal
 1982 | Iron Maiden | Hallowed Be Thy Name | metal
@@ -267,6 +357,11 @@
 1982 | Prince | 1999 | pop soul
 1982 | Gyllene Tider | Sommartider | pop swedish
 1982 | Ulf Lundell | Öppna landskap | rock swedish
+1982 | Musical Youth | Pass the Dutchie | reggae pop
+1982 | Yazoo | Don't Go | pop dance
+1982 | Afrika Bambaataa & the Soulsonic Force | Planet Rock | hiphop dance
+1982 | Eddy Grant | Electric Avenue | reggae pop
+1982 | Lasse Holm & Monica Törnell | Är det konstigt att man längtar bort nån gång | pop swedish
 1983 | Iron Maiden | The Trooper | metal
 1983 | Dio | Holy Diver | metal
 1983 | Dio | Rainbow in the Dark | metal
@@ -297,6 +392,10 @@
 1983 | UB40 | Red Red Wine | reggae pop
 1983 | Bob Marley & The Wailers | Buffalo Soldier | reggae
 1983 | Carola | Främling | pop swedish
+1983 | Madonna | Holiday | pop dance
+1983 | Kenny Rogers & Dolly Parton | Islands in the Stream | country pop
+1983 | Herbie Hancock | Rockit | dance hiphop
+1983 | Frankie Goes to Hollywood | Relax | pop dance
 1984 | Iron Maiden | Aces High | metal
 1984 | Iron Maiden | 2 Minutes to Midnight | metal
 1984 | Metallica | Fade to Black | metal
@@ -332,6 +431,14 @@
 1984 | Modern Talking | You're My Heart, You're My Soul | pop dance
 1984 | Opus | Live Is Life | pop rock
 1984 | Herreys | Diggi-Loo Diggi-Ley | pop swedish
+1984 | Laura Branigan | Self Control | pop dance
+1984 | Chaka Khan | I Feel for You | soul pop
+1984 | Run-D.M.C. | Rock Box | hiphop
+1984 | Ray Parker Jr. | Ghostbusters | pop
+1984 | Band Aid | Do They Know It's Christmas? | pop
+1984 | Bronski Beat | Smalltown Boy | pop dance
+1984 | Dead or Alive | You Spin Me Round (Like a Record) | pop dance
+1984 | Sade | Smooth Operator | soul
 1985 | a-ha | Take On Me | pop
 1985 | Tears for Fears | Everybody Wants to Rule the World | pop
 1985 | Kate Bush | Running Up That Hill (A Deal with God) | pop
@@ -345,6 +452,13 @@
 1985 | Falco | Rock Me Amadeus | pop
 1985 | Baltimora | Tarzan Boy | pop dance
 1985 | Anthrax | Madhouse | metal
+1985 | USA for Africa | We Are the World | pop
+1985 | Whitney Houston | Saving All My Love for You | pop soul
+1985 | Paul Hardcastle | 19 | dance
+1985 | Madonna | Into the Groove | pop dance
+1985 | Modern Talking | Cheri, Cheri Lady | pop dance
+1985 | Eurythmics & Aretha Franklin | Sisters Are Doin' It for Themselves | pop soul
+1985 | Kikki Danielsson | Bra vibrationer | pop country swedish
 1986 | Metallica | Master of Puppets | metal
 1986 | Metallica | Battery | metal
 1986 | Slayer | Raining Blood | metal extreme
@@ -366,6 +480,14 @@
 1986 | Run-DMC & Aerosmith | Walk This Way | hiphop rock
 1986 | Run-DMC | It's Tricky | hiphop
 1986 | Beastie Boys | (You Gotta) Fight for Your Right (To Party!) | hiphop rock
+1986 | Run-D.M.C. & Aerosmith | Walk This Way | hiphop rock
+1986 | Janet Jackson | Nasty | pop dance
+1986 | Madonna | Papa Don't Preach | pop
+1986 | Berlin | Take My Breath Away | pop
+1986 | Bananarama | Venus | pop dance
+1986 | Lionel Richie | Dancing on the Ceiling | pop
+1986 | Patti LaBelle & Michael McDonald | On My Own | soul pop
+1986 | Cameo | Word Up! | soul dance
 1987 | Guns N' Roses | Sweet Child o' Mine | hardrock rock
 1987 | Guns N' Roses | Welcome to the Jungle | hardrock rock
 1987 | Guns N' Roses | Paradise City | hardrock rock
@@ -389,6 +511,16 @@
 1987 | Michael Jackson | Man in the Mirror | pop soul
 1987 | Kylie Minogue | I Should Be So Lucky | pop dance
 1987 | Salt-N-Pepa | Push It | hiphop dance
+1987 | Michael Jackson | Bad | pop
+1987 | Bill Medley & Jennifer Warnes | (I've Had) The Time of My Life | pop
+1987 | M/A/R/R/S | Pump Up the Volume | dance
+1987 | Eric B. & Rakim | Paid in Full | hiphop
+1987 | Public Enemy | Rebel Without a Pause | hiphop
+1987 | LL Cool J | I Need Love | hiphop
+1987 | Kylie Minogue | The Loco-Motion | pop dance
+1987 | Taylor Dayne | Tell It to My Heart | pop dance
+1987 | Pet Shop Boys | Always on My Mind | pop dance
+1987 | Lotta Engberg | Fyra Bugg & en Coca Cola | pop swedish
 1988 | Metallica | One | metal
 1988 | Helloween | I Want Out | metal
 1988 | Poison | Every Rose Has Its Thorn | hardrock rock
@@ -399,6 +531,18 @@
 1988 | Bobby McFerrin | Don't Worry, Be Happy | pop
 1988 | Neneh Cherry | Buffalo Stance | pop hiphop swedish
 1988 | N.W.A | Straight Outta Compton | hiphop
+1988 | Roxette | The Look | pop rock swedish
+1988 | DJ Jazzy Jeff & the Fresh Prince | Parents Just Don't Understand | hiphop
+1988 | Public Enemy | Don't Believe the Hype | hiphop
+1988 | Rob Base and DJ E-Z Rock | It Takes Two | hiphop dance
+1988 | Yazz | The Only Way Is Up | dance pop
+1988 | S'Express | Theme from S-Express | dance
+1988 | Whitney Houston | One Moment in Time | pop
+1988 | Ziggy Marley and the Melody Makers | Tomorrow People | reggae
+1988 | Kylie Minogue & Jason Donovan | Especially for You | pop
+1988 | Paula Abdul | Straight Up | pop dance
+1988 | Inner City | Good Life | dance
+1988 | Bette Midler | Wind Beneath My Wings | pop
 1989 | Mötley Crüe | Kickstart My Heart | hardrock metal
 1989 | Mötley Crüe | Dr. Feelgood | hardrock metal
 1989 | Skid Row | Youth Gone Wild | hardrock metal
@@ -406,12 +550,21 @@
 1989 | Alice Cooper | Poison | hardrock rock
 1989 | Tom Petty | Free Fallin' | rock
 1989 | Billy Joel | We Didn't Start the Fire | pop rock
-1988 | Roxette | The Look | pop rock swedish
 1989 | Madonna | Like a Prayer | pop
 1989 | Depeche Mode | Personal Jesus | pop alt
 1989 | Phil Collins | Another Day in Paradise | pop
 1989 | Tina Turner | The Best | pop rock
 1989 | Public Enemy | Fight the Power | hiphop
+1989 | Soul II Soul | Back to Life (However Do You Want Me) | soul dance
+1989 | Technotronic | Pump Up the Jam | dance
+1989 | Black Box | Ride on Time | dance
+1989 | Young MC | Bust a Move | hiphop
+1989 | Tone Lōc | Funky Cold Medina | hiphop
+1989 | De La Soul | Me Myself and I | hiphop
+1989 | Janet Jackson | Rhythm Nation | pop dance
+1989 | Kaoma | Lambada | dance pop
+1989 | Milli Vanilli | Girl I'm Gonna Miss You | pop
+1989 | Tommy Nilsson | En dag | pop swedish
 
 # 1990s
 1990 | AC/DC | Thunderstruck | hardrock rock
@@ -430,6 +583,18 @@
 1990 | Madonna | Vogue | pop dance
 1990 | Snap! | The Power | dance hiphop
 1990 | LL Cool J | Mama Said Knock You Out | hiphop
+1990 | MC Hammer | U Can't Touch This | hiphop dance
+1990 | Vanilla Ice | Ice Ice Baby | hiphop
+1990 | Deee-Lite | Groove Is in the Heart | dance
+1990 | Sinéad O'Connor | Nothing Compares 2 U | pop
+1990 | Wilson Phillips | Hold On | pop
+1990 | Mariah Carey | Vision of Love | pop soul
+1990 | A Tribe Called Quest | Can I Kick It? | hiphop
+1990 | Garth Brooks | Friends in Low Places | country
+1990 | Londonbeat | I've Been Thinking About You | pop dance
+1990 | C+C Music Factory | Gonna Make You Sweat (Everybody Dance Now) | dance hiphop
+1990 | Tomas Ledin | Sommaren är kort | pop swedish
+1990 | Dr. Alban | No Coke | dance swedish
 1991 | Metallica | Enter Sandman | metal
 1991 | Metallica | Nothing Else Matters | metal rock
 1991 | Metallica | The Unforgiven | metal
@@ -454,6 +619,13 @@
 1991 | Roxette | Joyride | pop rock swedish
 1991 | Carola | Fångad av en stormvind | pop swedish
 1991 | Michael Jackson | Black or White | pop rock
+1991 | Salt-N-Pepa | Let's Talk About Sex | hiphop
+1991 | DJ Jazzy Jeff & the Fresh Prince | Summertime | hiphop
+1991 | Naughty by Nature | O.P.P. | hiphop
+1991 | Boyz II Men | Motownphilly | soul
+1991 | Color Me Badd | I Wanna Sex You Up | soul
+1991 | Shabba Ranks | Trailer Load a Girls | reggae
+1991 | Army of Lovers | Crucified | pop dance swedish
 1992 | Iron Maiden | Fear of the Dark | metal
 1992 | Megadeth | Symphony of Destruction | metal
 1992 | Pantera | Walk | metal
@@ -474,8 +646,17 @@
 1992 | Ace of Base | All That She Wants | pop dance swedish
 1992 | House of Pain | Jump Around | hiphop
 1992 | Dr. Dre | Nuthin' but a "G" Thang | hiphop
-1993 | Aerosmith | Crazy | rock
 1992 | Bon Jovi | Bed of Roses | rock
+1992 | Billy Ray Cyrus | Achy Breaky Heart | country
+1992 | Kris Kross | Jump | hiphop
+1992 | Sir Mix-a-Lot | Baby Got Back | hiphop
+1992 | En Vogue | My Lovin' (You're Never Gonna Get It) | soul pop
+1992 | Shakespears Sister | Stay | pop
+1992 | Arrested Development | Tennessee | hiphop
+1992 | Mary J. Blige | Real Love | soul
+1992 | Charles & Eddie | Would I Lie to You? | soul pop
+1992 | Captain Hollywood Project | More and More | dance
+1993 | Aerosmith | Crazy | rock
 1993 | Lenny Kravitz | Are You Gonna Go My Way | rock
 1993 | Nirvana | Heart-Shaped Box | alt rock
 1993 | Tool | Sober | metal alt
@@ -492,6 +673,16 @@
 1993 | Cypress Hill | Insane in the Brain | hiphop
 1993 | Snoop Dogg | Gin and Juice | hiphop
 1993 | Wu-Tang Clan | C.R.E.A.M. | hiphop
+1993 | Haddaway | Life | dance
+1993 | Snoop Doggy Dogg | Gin and Juice | hiphop
+1993 | Shaggy | Oh Carolina | reggae
+1993 | Janet Jackson | That's the Way Love Goes | pop soul
+1993 | Take That | Pray | pop
+1993 | UB40 | (I Can't Help) Falling in Love with You | reggae pop
+1993 | Chaka Demus & Pliers | Tease Me | reggae
+1993 | Reel 2 Real | I Like to Move It | dance
+1993 | Stakka Bo | Here We Go | dance hiphop swedish
+1993 | Arvingarna | Eloise | pop swedish
 1994 | Bon Jovi | Always | rock
 1994 | Soundgarden | Black Hole Sun | alt rock
 1994 | Green Day | Basket Case | punk rock
@@ -513,6 +704,15 @@
 1994 | Scatman John | Scatman (ski-ba-bop-ba-dop-bop) | dance
 1994 | The Notorious B.I.G. | Juicy | hiphop
 1994 | Nas | N.Y. State of Mind | hiphop
+1994 | Ini Kamoze | Here Comes the Hotstepper | reggae hiphop
+1994 | Boyz II Men | I'll Make Love to You | soul
+1994 | TLC | Creep | soul hiphop
+1994 | Warren G & Nate Dogg | Regulate | hiphop
+1994 | Elton John | Can You Feel the Love Tonight | pop
+1994 | All-4-One | I Swear | pop soul
+1994 | Tim McGraw | Indian Outlaw | country
+1994 | Des'ree | You Gotta Be | pop soul
+1994 | E-Type | This Is the Way | dance swedish
 1995 | Oasis | Wonderwall | rock indie
 1995 | Oasis | Don't Look Back in Anger | rock indie
 1995 | Oasis | Champagne Supernova | rock indie
@@ -530,6 +730,14 @@
 1995 | 2Pac | Dear Mama | hiphop
 1995 | La Bouche | Be My Lover | dance
 1995 | Faithless | Insomnia | dance
+1995 | Shaggy | Boombastic | reggae
+1995 | Michael Jackson | Earth Song | pop
+1995 | Shania Twain | Any Man of Mine | country pop
+1995 | Bone Thugs-n-Harmony | 1st of tha Month | hiphop
+1995 | Robert Miles | Children | dance
+1995 | 2Pac | California Love | hiphop
+1995 | Daft Punk | Da Funk | dance
+1995 | Rednex | Wish You Were Here | pop country swedish
 1996 | Metallica | Until It Sleeps | metal
 1996 | Sepultura | Roots Bloody Roots | metal extreme
 1996 | Marilyn Manson | The Beautiful People | metal alt
@@ -541,6 +749,15 @@
 1996 | Spice Girls | Wannabe | pop
 1996 | Fugees | Killing Me Softly with His Song | hiphop soul
 1996 | Fugees | Ready or Not | hiphop
+1996 | Mark Morrison | Return of the Mack | soul pop
+1996 | Fugees | Killing Me Softly | hiphop soul
+1996 | Celine Dion | Because You Loved Me | pop
+1996 | Toni Braxton | Un-Break My Heart | pop soul
+1996 | Blackstreet | No Diggity | soul hiphop
+1996 | Gina G | Ooh Aah... Just a Little Bit | pop dance
+1996 | LeAnn Rimes | Blue | country
+1996 | Mr. President | Coco Jamboo | dance
+1996 | Quad City DJ's | C'mon N' Ride It (The Train) | hiphop dance
 1997 | Foo Fighters | Everlong | rock alt
 1997 | Foo Fighters | My Hero | rock alt
 1997 | Green Day | Good Riddance (Time of Your Life) | punk rock
@@ -568,6 +785,14 @@
 1997 | The Notorious B.I.G. | Hypnotize | hiphop
 1997 | Will Smith | Men in Black | hiphop pop
 1997 | Will Smith | Gettin' Jiggy wit It | hiphop pop
+1997 | Fatboy Slim | Going Out of My Head | dance
+1997 | Puff Daddy & Faith Evans | I'll Be Missing You | hiphop
+1997 | Missy Elliott | The Rain (Supa Dupa Fly) | hiphop
+1997 | Erykah Badu | On & On | soul
+1997 | LeAnn Rimes | How Do I Live | country pop
+1997 | Spice Girls | Spice Up Your Life | pop
+1997 | Chumbawamba | Tubthumping | pop rock
+1997 | Run-D.M.C. vs. Jason Nevins | It's Like That | hiphop dance
 1998 | Aerosmith | I Don't Want to Miss a Thing | rock
 1998 | The Offspring | Pretty Fly (for a White Guy) | punk rock
 1998 | The Offspring | The Kids Aren't Alright | punk rock
@@ -588,6 +813,17 @@
 1998 | Lauryn Hill | Doo Wop (That Thing) | hiphop soul
 1998 | 2Pac | Changes | hiphop
 1998 | Beastie Boys | Intergalactic | hiphop
+1998 | Jay-Z | Hard Knock Life (Ghetto Anthem) | hiphop
+1998 | Brandy & Monica | The Boy Is Mine | soul pop
+1998 | Faith Hill | This Kiss | country pop
+1998 | Dixie Chicks | Wide Open Spaces | country
+1998 | Mousse T. vs. Hot 'n' Juicy | Horny '98 | dance
+1998 | Vengaboys | Boom, Boom, Boom, Boom!! | dance
+1998 | Alice Deejay | Better Off Alone | dance
+1998 | Sonique | It Feels So Good | dance
+1998 | Petter | Mikrofonkåt | hiphop swedish
+1998 | Petter | Så klart! | hiphop swedish
+1998 | Emilia | Big Big World | pop swedish
 1999 | Red Hot Chili Peppers | Californication | alt rock
 1999 | Red Hot Chili Peppers | Scar Tissue | alt rock
 1999 | Red Hot Chili Peppers | Otherside | alt rock
@@ -608,6 +844,17 @@
 1999 | Eminem | My Name Is | hiphop
 1999 | Dr. Dre | Still D.R.E. | hiphop
 1999 | Dr. Dre | The Next Episode | hiphop
+1999 | Destiny's Child | Bills, Bills, Bills | soul pop
+1999 | Jennifer Lopez | If You Had My Love | pop
+1999 | Dr. Dre & Snoop Dogg | Still D.R.E. | hiphop
+1999 | Santana & Rob Thomas | Smooth | pop rock
+1999 | Vengaboys | We're Going to Ibiza! | dance
+1999 | Moby | Porcelain | dance
+1999 | Britney Spears | Sometimes | pop
+1999 | Westlife | Flying Without Wings | pop
+1999 | Sisqó | Thong Song | soul
+1999 | Faith Hill | Breathe | country pop
+1999 | Charlotte Nilsson | Take Me to Your Heaven | pop swedish
 
 # 2000s
 2000 | Linkin Park | In the End | metal alt rock
@@ -634,6 +881,15 @@
 2000 | Eminem | The Real Slim Shady | hiphop
 2000 | Eminem | Stan | hiphop
 2000 | Outkast | Ms. Jackson | hiphop
+2000 | Destiny's Child | Independent Women Part I | soul pop
+2000 | Shaggy feat. Rikrok | It Wasn't Me | reggae pop
+2000 | Craig David | 7 Days | soul pop
+2000 | Spiller | Groovejet (If This Ain't Love) | dance
+2000 | Madonna | Music | pop dance
+2000 | Nelly | Country Grammar (Hot Shit) | hiphop
+2000 | Anastacia | I'm Outta Love | pop soul
+2000 | Shaggy feat. Rayvon | Angel | reggae pop
+2000 | DJ Ötzi | Hey Baby (Uhh, Ahh) | pop dance
 2001 | System of a Down | Chop Suey! | metal alt
 2001 | System of a Down | Toxicity | metal alt
 2001 | System of a Down | Aerials | metal alt
@@ -652,6 +908,11 @@
 2001 | Destiny's Child | Survivor | soul pop
 2001 | Alicia Keys | Fallin' | soul
 2001 | Missy Elliott | Get Ur Freak On | hiphop
+2001 | Jay-Z | Izzo (H.O.V.A.) | hiphop
+2001 | Christina Aguilera, Lil' Kim, Mýa & Pink | Lady Marmalade | pop soul
+2001 | Ja Rule feat. Ashanti | Always on Time | hiphop soul
+2001 | Shakira | Underneath Your Clothes | pop
+2001 | Kylie Minogue | Love at First Sight | pop dance
 2002 | Audioslave | Like a Stone | rock alt
 2002 | Queens of the Stone Age | No One Knows | rock alt
 2002 | Queens of the Stone Age | Go with the Flow | rock alt
@@ -671,6 +932,16 @@
 2002 | Eminem | Lose Yourself | hiphop
 2002 | Eminem | Without Me | hiphop
 2002 | Missy Elliott | Work It | hiphop
+2002 | Nelly feat. Kelly Rowland | Dilemma | hiphop soul
+2002 | Nelly | Hot in Herre | hiphop
+2002 | Las Ketchup | The Ketchup Song (Aserejé) | pop dance
+2002 | Sean Paul | Gimme the Light | reggae hiphop
+2002 | Ashanti | Foolish | soul
+2002 | Atomic Kitten | The Tide Is High (Get the Feeling) | pop
+2002 | Shania Twain | I'm Gonna Getcha Good! | country pop
+2002 | Christina Aguilera | Beautiful | pop
+2002 | t.A.T.u. | All the Things She Said | pop
+2002 | Junior Senior | Move Your Feet | pop dance
 2003 | Linkin Park | Numb | metal alt rock
 2003 | Linkin Park | Faint | metal alt
 2003 | Evanescence | Bring Me to Life | metal alt rock
@@ -689,6 +960,14 @@
 2003 | Outkast | Hey Ya! | hiphop pop
 2003 | 50 Cent | In da Club | hiphop
 2003 | JAY-Z | 99 Problems | hiphop
+2003 | Beyoncé feat. Sean Paul | Baby Boy | soul reggae
+2003 | Missy Elliott | Pass That Dutch | hiphop
+2003 | Kelis | Milkshake | soul hiphop
+2003 | Outkast | Roses | hiphop
+2003 | Toby Keith | I Love This Bar | country
+2003 | Alicia Keys | If I Ain't Got You | soul
+2003 | O-Zone | Dragostea din tei | pop dance
+2003 | Fame | Give Me Your Love | pop swedish
 2004 | Green Day | American Idiot | punk rock
 2004 | Green Day | Boulevard of Broken Dreams | punk rock
 2004 | Green Day | Wake Me Up When September Ends | rock
@@ -711,6 +990,15 @@
 2004 | Akon | Lonely | hiphop pop
 2004 | Snoop Dogg | Drop It Like It's Hot | hiphop
 2004 | Eminem | Mockingbird | hiphop
+2004 | Usher | Burn | soul
+2004 | Kanye West | Jesus Walks | hiphop
+2004 | Ciara feat. Petey Pablo | Goodies | soul hiphop
+2004 | Daddy Yankee | Gasolina | hiphop dance
+2004 | Gwen Stefani | Hollaback Girl | pop
+2004 | Mario Winans | I Don't Wanna Know | soul
+2004 | Gretchen Wilson | Redneck Woman | country
+2004 | Big & Rich | Save a Horse (Ride a Cowboy) | country
+2004 | Ciara feat. Missy Elliott | 1, 2 Step | soul hiphop
 2005 | System of a Down | B.Y.O.B. | metal alt
 2005 | Avenged Sevenfold | Bat Country | metal
 2005 | Sabaton | Primo Victoria | metal swedish
@@ -728,6 +1016,17 @@
 2005 | Kanye West | Gold Digger | hiphop
 2005 | 50 Cent | Candy Shop | hiphop
 2005 | Sean Paul | Temperature | reggae dance
+2005 | Mariah Carey | We Belong Together | pop soul
+2005 | Black Eyed Peas | My Humps | hiphop pop
+2005 | Rihanna | Pon de Replay | pop dance
+2005 | Daniel Powter | Bad Day | pop
+2005 | Carrie Underwood | Jesus, Take the Wheel | country
+2005 | Damian Marley | Welcome to Jamrock | reggae hiphop
+2005 | Sean Paul | We Be Burnin' | reggae
+2005 | Bob Sinclar | Love Generation | dance
+2005 | Crazy Frog | Axel F | dance
+2005 | Carrie Underwood | Before He Cheats | country
+2005 | Martin Stenmarck | Las Vegas | pop swedish
 2006 | Muse | Supermassive Black Hole | rock alt
 2006 | Muse | Knights of Cydonia | rock alt
 2006 | Lamb of God | Redneck | metal extreme
@@ -745,6 +1044,16 @@
 2006 | Nelly Furtado | Promiscuous | pop
 2006 | Nelly Furtado | Maneater | pop
 2006 | Shakira | Hips Don't Lie | pop dance
+2006 | Beyoncé | Irreplaceable | soul pop
+2006 | Rihanna | SOS | pop dance
+2006 | Christina Aguilera | Ain't No Other Man | pop soul
+2006 | Fergie | London Bridge | pop hiphop
+2006 | Lily Allen | Smile | pop
+2006 | T.I. | What You Know | hiphop
+2006 | Bob Sinclar | Rock This Party (Everybody Dance Now) | dance
+2006 | Taylor Swift | Our Song | country pop
+2006 | Carola | Invincible | pop swedish
+2006 | Veronica Maggio | Måndagsbarn | pop swedish
 2007 | Foo Fighters | The Pretender | rock alt
 2007 | Linkin Park | What I've Done | rock alt metal
 2007 | Arctic Monkeys | 505 | indie rock
@@ -764,6 +1073,14 @@
 2007 | Basshunter | Now You're Gone | dance swedish
 2007 | Kanye West | Stronger | hiphop
 2007 | Flo Rida | Low | hiphop
+2007 | Soulja Boy Tell 'Em | Crank That (Soulja Boy) | hiphop
+2007 | Timbaland feat. Keri Hilson & D.O.E. | The Way I Are | hiphop pop
+2007 | Beyoncé & Shakira | Beautiful Liar | pop
+2007 | Justice | D.A.N.C.E. | dance
+2007 | Kylie Minogue | 2 Hearts | pop
+2007 | M.I.A. | Paper Planes | hiphop
+2007 | Timbuktu | Resten av ditt liv | hiphop swedish
+2007 | September | Cry for You | pop dance swedish
 2008 | Metallica | The Day That Never Comes | metal
 2008 | Slipknot | Psychosocial | metal extreme
 2008 | Volbeat | Still Counting | metal rock
@@ -785,6 +1102,15 @@
 2008 | Taylor Swift | You Belong with Me | pop country
 2008 | P!nk | So What | pop rock
 2008 | Kanye West | Heartless | hiphop
+2008 | Lil Wayne feat. Static Major | Lollipop | hiphop
+2008 | T.I. feat. Rihanna | Live Your Life | hiphop
+2008 | Kanye West | Love Lockdown | hiphop
+2008 | Britney Spears | Womanizer | pop
+2008 | Duffy | Warwick Avenue | pop
+2008 | Estelle feat. Kanye West | American Boy | soul pop
+2008 | Ne-Yo | Closer | soul pop
+2008 | Pussycat Dolls | When I Grow Up | pop
+2008 | Charlotte Perrelli | Hero | pop swedish
 2009 | Muse | Uprising | rock alt
 2009 | Mumford & Sons | Little Lion Man | indie rock
 2009 | Mando Diao | Dance with Somebody | rock pop swedish
@@ -796,6 +1122,15 @@
 2009 | Miley Cyrus | Party in the U.S.A. | pop
 2009 | Train | Hey, Soul Sister | pop
 2009 | JAY-Z & Alicia Keys | Empire State of Mind | hiphop
+2009 | David Guetta feat. Akon | Sexy Bitch | dance
+2009 | La Roux | Bulletproof | pop
+2009 | Pitbull | I Know You Want Me (Calle Ocho) | dance hiphop
+2009 | Jason Derulo | Whatcha Say | pop
+2009 | Drake | Best I Ever Had | hiphop
+2009 | Lady Antebellum | Need You Now | country pop
+2009 | Taio Cruz | Break Your Heart | pop dance
+2009 | Alexandra Burke | Bad Boys | pop
+2009 | Malena Ernman | La voix | pop swedish
 
 # 2010s
 2010 | Avenged Sevenfold | Nightmare | metal
@@ -813,6 +1148,17 @@
 2010 | Eminem | Love the Way You Lie | hiphop
 2010 | Eminem | Not Afraid | hiphop
 2010 | Kanye West | Power | hiphop
+2010 | CeeLo Green | Fuck You | soul pop
+2010 | Taio Cruz | Dynamite | pop dance
+2010 | Enrique Iglesias feat. Pitbull | I Like It | pop dance
+2010 | Far East Movement | Like a G6 | hiphop dance
+2010 | Kanye West | Runaway | hiphop
+2010 | Nicki Minaj | Super Bass | hiphop pop
+2010 | Yolanda Be Cool & DCUP | We No Speak Americano | dance
+2010 | Alexandra Stan | Mr. Saxobeat | dance
+2010 | Martin Solveig & Dragonette | Hello | dance
+2010 | Duck Sauce | Barbra Streisand | dance
+2010 | Eric Saade | Manboy | pop swedish
 2011 | Foo Fighters | Walk | rock alt
 2011 | The Black Keys | Lonely Boy | rock indie
 2011 | Coldplay | Paradise | pop rock
@@ -832,6 +1178,17 @@
 2011 | Veronica Maggio | Jag kommer | pop swedish
 2011 | Kelly Clarkson | Stronger (What Doesn't Kill You) | pop
 2011 | Macklemore & Ryan Lewis | Can't Hold Us | hiphop
+2011 | Pitbull feat. Ne-Yo, Afrojack & Nayer | Give Me Everything | dance
+2011 | Lady Gaga | Born This Way | pop dance
+2011 | Katy Perry | Last Friday Night (T.G.I.F.) | pop
+2011 | Michel Teló | Ai Se Eu Te Pego! | pop
+2011 | Drake feat. Rihanna | Take Care | hiphop
+2011 | Blake Shelton | Honey Bee | country
+2011 | Carly Rae Jepsen | Call Me Maybe | pop
+2011 | One Direction | What Makes You Beautiful | pop
+2011 | Capital Cities | Safe and Sound | pop dance
+2011 | Danny Saucedo | In the Club | pop dance swedish
+2011 | Eric Saade | Popular | pop dance swedish
 2012 | Imagine Dragons | Radioactive | rock pop alt
 2012 | Imagine Dragons | Demons | rock pop alt
 2012 | Mumford & Sons | I Will Wait | indie rock
@@ -850,6 +1207,14 @@
 2012 | Macklemore & Ryan Lewis | Thrift Shop | hiphop
 2012 | Kendrick Lamar | Swimming Pools (Drank) | hiphop
 2012 | Kendrick Lamar | Money Trees | hiphop
+2012 | Taylor Swift | We Are Never Ever Getting Back Together | pop
+2012 | Frank Ocean | Thinkin Bout You | soul
+2012 | Flo Rida | Whistle | hiphop pop
+2012 | Florida Georgia Line | Cruise | country
+2012 | Disclosure feat. Sam Smith | Latch | dance
+2012 | Avicii | Silhouettes | dance swedish
+2012 | Alesso | Years | dance swedish
+2012 | Panetoz | Dansa pausa | pop dance swedish
 2013 | Arctic Monkeys | Do I Wanna Know? | indie rock
 2013 | Avenged Sevenfold | Hail to the King | metal
 2013 | Volbeat | Lola Montez | metal rock
@@ -873,6 +1238,13 @@
 2013 | Tove Lo | Habits (Stay High) | pop swedish
 2013 | OneRepublic | Counting Stars | pop rock
 2013 | Drake | Started from the Bottom | hiphop
+2013 | Robin Thicke feat. T.I. & Pharrell | Blurred Lines | pop soul
+2013 | Drake feat. Majid Jordan | Hold On, We're Going Home | hiphop pop
+2013 | Ylvis | The Fox (What Does the Fox Say?) | pop dance
+2013 | Bastille | Pompeii | pop indie
+2013 | Kacey Musgraves | Follow Your Arrow | country
+2013 | Magic! | Rude | reggae pop
+2013 | Icona Pop | All Night | pop dance swedish
 2014 | Royal Blood | Figure It Out | rock
 2014 | Fall Out Boy | Centuries | rock pop
 2014 | Coldplay | A Sky Full of Stars | pop dance
@@ -889,6 +1261,12 @@
 2014 | Calvin Harris | Summer | dance pop
 2014 | Kygo | Firestone | dance
 2014 | Avicii | The Nights | dance pop swedish
+2014 | Meghan Trainor | All About That Bass | pop
+2014 | Iggy Azalea feat. Charli XCX | Fancy | hiphop pop
+2014 | Nicki Minaj | Anaconda | hiphop
+2014 | Fetty Wap | Trap Queen | hiphop
+2014 | Lost Frequencies | Are You with Me | dance
+2014 | Sanna Nielsen | Undo | pop swedish
 2015 | Disturbed | The Sound of Silence | metal rock
 2015 | Bring Me the Horizon | Throne | metal alt
 2015 | Tame Impala | The Less I Know the Better | indie alt
@@ -906,6 +1284,14 @@
 2015 | Måns Zelmerlöw | Heroes | pop swedish
 2015 | Drake | Hotline Bling | hiphop
 2015 | Kendrick Lamar | Alright | hiphop
+2015 | Wiz Khalifa feat. Charlie Puth | See You Again | hiphop pop
+2015 | The Weeknd | The Hills | pop soul
+2015 | Jack Ü feat. Justin Bieber | Where Are Ü Now | dance pop
+2015 | Silentó | Watch Me (Whip/Nae Nae) | hiphop dance
+2015 | Ellie Goulding | Love Me like You Do | pop
+2015 | Chris Stapleton | Tennessee Whiskey | country
+2015 | Desiigner | Panda | hiphop
+2015 | Tove Lo | Talking Body | pop swedish
 2016 | Metallica | Hardwired | metal
 2016 | Ghost | Square Hammer | metal rock swedish
 2016 | Twenty One Pilots | Heathens | alt
@@ -920,6 +1306,14 @@
 2016 | Drake | One Dance | hiphop dance
 2016 | Travis Scott | goosebumps | hiphop
 2016 | Post Malone | Congratulations | hiphop
+2016 | Rihanna feat. Drake | Work | pop reggae
+2016 | Beyoncé | Formation | pop hiphop
+2016 | Rae Sremmurd feat. Gucci Mane | Black Beatles | hiphop
+2016 | DJ Snake feat. Justin Bieber | Let Me Love You | dance pop
+2016 | Migos feat. Lil Uzi Vert | Bad and Boujee | hiphop
+2016 | Lizzo | Good as Hell | pop
+2016 | Frans | If I Were Sorry | pop swedish
+2016 | Zara Larsson | Ain't My Fault | pop swedish
 2017 | Imagine Dragons | Believer | rock pop
 2017 | Imagine Dragons | Thunder | pop
 2017 | Greta Van Fleet | Highway Tune | rock hardrock
@@ -935,6 +1329,15 @@
 2017 | Kendrick Lamar | HUMBLE. | hiphop
 2017 | Post Malone | rockstar | hiphop
 2017 | Lil Uzi Vert | XO Tour Llif3 | hiphop
+2017 | Luis Fonsi & Daddy Yankee | Despacito | pop
+2017 | Cardi B | Bodak Yellow | hiphop
+2017 | Taylor Swift | Look What You Made Me Do | pop
+2017 | Clean Bandit feat. Zara Larsson | Symphony | pop dance
+2017 | J Balvin & Willy William | Mi Gente | dance pop
+2017 | Sam Hunt | Body like a Back Road | country pop
+2017 | Marshmello feat. Khalid | Silence | dance
+2017 | Portugal. The Man | Feel It Still | pop indie
+2017 | Lizzo | Truth Hurts | pop hiphop
 2018 | Ghost | Dance Macabre | metal rock swedish
 2018 | Panic! at the Disco | High Hopes | pop rock
 2018 | Lady Gaga & Bradley Cooper | Shallow | pop rock
@@ -949,6 +1352,13 @@
 2018 | Juice WRLD | Lucid Dreams | hiphop
 2018 | XXXTENTACION | SAD! | hiphop
 2018 | Lil Nas X | Old Town Road | hiphop country
+2018 | Childish Gambino | This Is America | hiphop
+2018 | Marshmello & Bastille | Happier | dance pop
+2018 | Cardi B, Bad Bunny & J Balvin | I Like It | hiphop
+2018 | Post Malone & Swae Lee | Sunflower | hiphop pop
+2018 | Kacey Musgraves | Slow Burn | country
+2018 | Dynoro & Gigi D'Agostino | In My Mind | dance
+2018 | Benjamin Ingrosso | Dance You Off | pop swedish
 2019 | Rammstein | Deutschland | metal
 2019 | Ghost | Mary on a Cross | rock metal swedish
 2019 | Sabaton | Bismarck | metal swedish
@@ -962,12 +1372,26 @@
 2019 | Tones and I | Dance Monkey | pop
 2019 | Doja Cat | Say So | pop
 2019 | Post Malone | Circles | pop
+2019 | Roddy Ricch | The Box | hiphop
+2019 | Regard | Ride It | dance
+2019 | Megan Thee Stallion | Hot Girl Summer | hiphop
+2019 | Arizona Zervas | Roxanne | hiphop
+2019 | Victor Leksell | Svag | pop swedish
 
 # 2020s
 2020 | Glass Animals | Heat Waves | indie pop
 2020 | Dua Lipa | Levitating | pop dance
 2020 | The Weeknd | Save Your Tears | pop
 2020 | Chappell Roan | Pink Pony Club | pop
+2020 | Cardi B feat. Megan Thee Stallion | WAP | hiphop
+2020 | BTS | Dynamite | pop
+2020 | Jawsh 685 & Jason Derulo | Savage Love (Laxed – Siren Beat) | pop
+2020 | Megan Thee Stallion | Savage | hiphop
+2020 | DaBaby feat. Roddy Ricch | Rockstar | hiphop
+2020 | 24kGoldn feat. Iann Dior | Mood | pop hiphop
+2020 | Ariana Grande | Positions | pop
+2020 | Bad Bunny & Jhay Cortez | Dákiti | pop
+2020 | Molly Sandén | Husavik | pop swedish
 2021 | Måneskin | I Wanna Be Your Slave | rock
 2021 | Måneskin | Zitti e buoni | rock
 2021 | Iron Maiden | The Writing on the Wall | metal
@@ -980,6 +1404,10 @@
 2021 | Justin Bieber | Peaches | pop soul
 2021 | Doja Cat | Kiss Me More | pop
 2021 | Lil Nas X | MONTERO (Call Me By Your Name) | hiphop pop
+2021 | Silk Sonic | Leave the Door Open | soul
+2021 | Elton John & Dua Lipa | Cold Heart (Pnau Remix) | pop dance
+2021 | Walker Hayes | Fancy Like | country
+2021 | Tusse | Voices | pop swedish
 2022 | Harry Styles | As It Was | pop
 2022 | Taylor Swift | Anti-Hero | pop
 2022 | SZA | Kill Bill | soul pop
@@ -988,6 +1416,13 @@
 2022 | Zach Bryan | Something in the Orange | country
 2022 | Djo | End of Beginning | indie pop
 2022 | Metallica | Lux Æterna | metal
+2022 | Lizzo | About Damn Time | pop soul
+2022 | Beyoncé | Break My Soul | dance pop
+2022 | Bad Bunny | Tití Me Preguntó | pop
+2022 | Steve Lacy | Bad Habit | soul indie
+2022 | David Guetta & Bebe Rexha | I'm Good (Blue) | dance
+2022 | Rema & Selena Gomez | Calm Down | pop
+2022 | Cornelia Jakobs | Hold Me Closer | pop swedish
 2023 | Miley Cyrus | Flowers | pop
 2023 | Olivia Rodrigo | vampire | pop
 2023 | Billie Eilish | What Was I Made For? | pop
@@ -998,6 +1433,11 @@
 2023 | Morgan Wallen | Last Night | country
 2023 | Loreen | Tattoo | pop swedish
 2023 | Travis Scott | FE!N | hiphop
+2023 | Jung Kook feat. Latto | Seven | pop
+2023 | Dua Lipa | Dance the Night | pop dance
+2023 | Peso Pluma & Eslabon Armado | Ella Baila Sola | pop
+2023 | Luke Combs | Fast Car | country
+2023 | Tyla | Water | pop dance
 2024 | Sabrina Carpenter | Espresso | pop
 2024 | Sabrina Carpenter | Please Please Please | pop
 2024 | Chappell Roan | Good Luck, Babe! | pop
@@ -1011,6 +1451,9 @@
 2024 | Kendrick Lamar | Not Like Us | hiphop
 2024 | Gracie Abrams | That's So True | pop
 2024 | SZA | Saturn | soul pop
+2024 | Charli XCX | 360 | pop dance
+2024 | Tommy Richman | Million Dollar Baby | soul hiphop
+2024 | Post Malone feat. Morgan Wallen | I Had Some Help | country pop
 
 # Alternative / indie additions (2026-11-22)
 1988 | Pixies | Where Is My Mind? | alt rock indie
