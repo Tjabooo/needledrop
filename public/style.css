@@ -319,6 +319,6 @@ button.gap:hover:not(.locked) { background: rgba(255,255,255,.04); border-color:
 
 /* player order (top starts) */
 .order { display: flex; flex-direction: column; flex: none; }
-.order .icon { font-size: 9px; line-height: 1; padding: 2px 6px; height: auto; width: auto; }
+.order .icon { font-size: 13px; line-height: 1; padding: 2px 8px; color: var(--sub); }
 .order .icon:disabled { opacity: .25; cursor: default; }
 .named small { display: block; color: var(--gold); font-size: 12px; margin-top: 2px; }
