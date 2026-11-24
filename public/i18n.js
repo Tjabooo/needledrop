@@ -1,0 +1,245 @@
+// UI language: English (the source strings) or Swedish. t('English text {var}', { var }) returns the text in the
+// current language; strings without a Swedish entry stay English. The game's name, Needledrop, is never translated.
+
+const KEY = 'nd.lang';
+export const LANGS = ['en', 'sv'];
+
+function initial() {
+  try { const v = JSON.parse(localStorage.getItem(KEY) || 'null'); if (LANGS.includes(v)) return v; } catch { /* default below */ }
+  return /^(sv|nb|no|da)\b/i.test(navigator.language || '') ? 'sv' : 'en';
+}
+
+export let lang = initial();
+document.documentElement.lang = lang;
+
+export function setLang(l) {
+  lang = LANGS.includes(l) ? l : 'en';
+  try { localStorage.setItem(KEY, JSON.stringify(lang)); } catch { /* storage full or blocked */ }
+  document.documentElement.lang = lang;
+}
+
+export function t(s, vars) {
+  let out = (lang === 'sv' && SV[s]) || s;
+  if (vars) out = out.replace(/\{(\w+)\}/g, (m, k) => (vars[k] ?? m));
+  return out;
+}
+
+// "Oliver's" / "Olivers" (Swedish drops the apostrophe and adds no s after s, x or z).
+export function poss(name) {
+  if (lang === 'sv') return /[sxz]$/i.test(name) ? name : `${name}s`;
+  return `${name}'s`;
+}
+
+// '80s / 80-tal, 2000s / 00-tal
+export function decade(d) {
+  if (lang === 'sv') return `${String(d).slice(2)}-tal`;
+  return d >= 2000 ? `${d}s` : `'${String(d).slice(2)}s`;
+}
+
+const SV = {
+  // errors and toasts
+  'Browser storage is full: {msg}': 'Webbläsarens lagring är full: {msg}',
+  'demo mode (no sound)': 'demoläge (inget ljud)',
+  'Spotify could not find the player. Open Spotify on this device, or pick "This browser" in setup.': 'Spotify hittade inte spelaren. Öppna Spotify på den här enheten, eller välj ”Den här webbläsaren” i inställningarna.',
+  'Spotify refused playback (Premium needed, or the account is not added to the app).': 'Spotify vägrade spela (Premium krävs, eller så är kontot inte tillagt i appen).',
+  'Spotify rate limit for this app reached; wait a minute.': 'Appen har gjort för många anrop till Spotify; vänta en minut.',
+  'Out of songs: add more song packs in setup.': 'Låtarna är slut: lägg till fler låtpaket i inställningarna.',
+  'Out of songs for {name}: add more song packs in setup.': 'Låtarna är slut för {name}: lägg till fler låtpaket i inställningarna.',
+  'Spotify did not find the last songs it was asked for. Try again.': 'Spotify hittade inte de senaste låtarna. Försök igen.',
+  'The browser player is still starting. Press play in a moment.': 'Webbläsarspelaren startar fortfarande. Tryck på play om en stund.',
+  'Pick a Spotify device in setup.': 'Välj en Spotify-enhet i inställningarna.',
+  'Nothing to undo': 'Inget att ångra',
+  'Undone': 'Ångrat',
+  'Connect Spotify first (top of the page).': 'Koppla Spotify först (högst upp på sidan).',
+  'Log in to Spotify first.': 'Logga in på Spotify först.',
+  'Add at least one player.': 'Lägg till minst en spelare.',
+  'Every player needs a name.': 'Alla spelare behöver ett namn.',
+  'Only {n} songs in your packs: add a few more so nobody runs dry.': 'Bara {n} låtar i paketen: lägg till några till så att ingen får slut.',
+  'Dealing a starting card to everyone…': 'Delar ut ett startkort till alla…',
+  'Finding a record…': 'Letar fram en skiva…',
+  'Spinning another one…': 'Lägger på en annan…',
+  'That pack is already in the list.': 'Det paketet finns redan i listan.',
+  'Log in to Spotify to search other genres.': 'Logga in på Spotify för att söka efter andra genrer.',
+  'Spotify had nothing for "{genre}" in those years. Try another spelling (e.g. "eurodance", "swedish pop", "grunge").': 'Spotify hade inget för ”{genre}” de åren. Prova en annan stavning (t.ex. ”eurodance”, ”swedish pop”, ”grunge”).',
+  'Searching Spotify for {genre} from the {decade}… {n} songs': 'Söker efter {genre} från {decade} på Spotify… {n} låtar',
+  'Fetching your playlists…': 'Hämtar dina spellistor…',
+  'playlist': 'spellistan',
+  'Reading {name}…': 'Läser {name}…',
+  'Spotify returned no songs: only playlists you made (or collaborate on) can be read.': 'Spotify gav inga låtar: bara spellistor du har gjort (eller samarbetar på) kan läsas.',
+  'Added 1 "growing up" pack. Edit or remove it if you like.': 'Lade till 1 uppväxtpaket. Ändra eller ta bort det om du vill.',
+  'Added {n} "growing up" packs. Edit or remove any of them.': 'Lade till {n} uppväxtpaket. Ändra eller ta bort vilka du vill.',
+  'Fill in birth years first (or they already have one).': 'Fyll i födelseår först (eller så har de redan ett).',
+  'Setup link copied: open it on another device to get the same players, packs and rules.': 'Länken kopierad: öppna den på en annan enhet för att få samma spelare, paket och regler.',
+  'That does not look like a Client ID (32 letters and digits).': 'Det ser inte ut som ett Client ID (32 bokstäver och siffror).',
+  "Using the site's default app key.": 'Använder sidans egen appnyckel.',
+  'Copied': 'Kopierat',
+  'Type {name} birth year first.': 'Skriv in födelseåret för {name} först.',
+  'their': 'personen',
+  'Years set to when {name} grew up. Pick genres and press Add.': 'Åren är satta till när {name} växte upp. Välj genrer och tryck på Lägg till.',
+  'they': 'personen',
+  'Start over? The current game will be lost.': 'Börja om? Den pågående omgången försvinner.',
+  'Songs will play on that Spotify app. Keep its screen out of sight.': 'Låtarna spelas i den Spotify-appen. Håll dess skärm utom synhåll.',
+  'Setup loaded from the link.': 'Inställningarna laddades från länken.',
+  ' Press ↻ on Spotify search packs to fetch their songs.': ' Tryck på ↻ på Spotify-sökpaketen för att hämta deras låtar.',
+  'That setup link is broken.': 'Länken är trasig.',
+  'Loading…': 'Laddar…',
+  'Needledrop: guess the year': 'Needledrop: gissa året',
+
+  // spotify.js
+  'Spotify login was cancelled.': 'Spotify-inloggningen avbröts.',
+  'Spotify said: {err}': 'Spotify svarade: {err}',
+  'Spotify login failed: {msg}': 'Spotify-inloggningen misslyckades: {msg}',
+  'Not logged in to Spotify': 'Inte inloggad på Spotify',
+  'This browser cannot play Spotify (try Chrome, Edge or Firefox)': 'Den här webbläsaren kan inte spela Spotify (prova Chrome, Edge eller Firefox)',
+  'Spotify login expired, log in again': 'Spotify-inloggningen har gått ut, logga in igen',
+  'Spotify Premium is needed to play in the browser': 'Spotify Premium krävs för att spela i webbläsaren',
+
+  // Spotify panel
+  'Connect Spotify': 'Koppla Spotify',
+  'Songs play through Spotify (Premium) on this device. Spotify needs a free app key once:': 'Låtarna spelas via Spotify (Premium) på den här enheten. Spotify behöver en gratis appnyckel en gång:',
+  'Open {link} and log in.': 'Öppna {link} och logga in.',
+  '<b>Create app</b>: any name, tick <b>Web API</b> and <b>Web Playback SDK</b>, and add this Redirect URI:': '<b>Create app</b>: valfritt namn, kryssa i <b>Web API</b> och <b>Web Playback SDK</b>, och lägg till den här Redirect URI:n:',
+  "Paste the app's <b>Client ID</b> here:": 'Klistra in appens <b>Client ID</b> här:',
+  'Save': 'Spara',
+  'Log in with the Premium account that should play the music.': 'Logga in med det Premium-konto som ska spela musiken.',
+  'Log in with Spotify': 'Logga in med Spotify',
+  'Change app key': 'Byt appnyckel',
+  'starting…': 'startar…',
+  'ready': 'redo',
+  'error': 'fel',
+  'This browser ({state})': 'Den här webbläsaren ({state})',
+  'Saved device (not seen right now)': 'Sparad enhet (syns inte just nu)',
+  'Logged in as {name}.': 'Inloggad som {name}.',
+  'Logged in.': 'Inloggad.',
+  'Play on': 'Spela på',
+  'Look for Spotify apps on this network': 'Leta efter Spotify-appar på nätverket',
+  'You can also open the Spotify app on this laptop and pick it above.': 'Du kan också öppna Spotify-appen på datorn och välja den ovan.',
+  'Tip: "This browser" hides the song best. If you pick the Spotify app, keep its window out of sight.': 'Tips: ”Den här webbläsaren” döljer låten bäst. Väljer du Spotify-appen, håll fönstret utom synhåll.',
+  'Log out': 'Logga ut',
+
+  // setup
+  'Change colour': 'Byt färg',
+  'Player {n}': 'Spelare {n}',
+  'Born': 'Född',
+  'Pick songs from the years they grew up': 'Välj låtar från åren personen växte upp',
+  'Their era': 'Uppväxtåren',
+  'Remove': 'Ta bort',
+  'Everyone': 'Alla',
+  'Unnamed': 'Namnlös',
+  'Turn on': 'Slå på',
+  'Turn off': 'Stäng av',
+  '{n} songs': '{n} låtar',
+  ' · from Spotify search': ' · från Spotify-sökning',
+  'Search again': 'Sök igen',
+  "No song packs yet. Pick genres and years below and press the orange <b>Add</b> button (or just <b>Start the game</b> to use what's picked).": 'Inga låtpaket än. Välj genrer och år nedan och tryck på den orange knappen <b>Lägg till</b> (eller bara <b>Starta spelet</b> för att använda det som är valt).',
+  'The song plays, you guess the year. One laptop, the whole table.': 'Låten spelas, du gissar året. En dator, hela bordet.',
+  'Players': 'Spelare',
+  "Add everyone who plays. Birth years are optional: they help pick songs from each person's era.": 'Lägg till alla som spelar. Födelseår är valfritt: det hjälper till att välja låtar från var och ens uppväxt.',
+  '+ Add player': '+ Lägg till spelare',
+  'Rules': 'Regler',
+  'Cards to win': 'Kort för att vinna',
+  'First to this many cards on their timeline wins.': 'Först till så här många kort på sin tidslinje vinner.',
+  'Starting tokens': 'Polletter från start',
+  'Coins everyone starts with. Spend 1 to skip a song or challenge, 3 to buy a card. Name artist + title to earn more (max 5).': 'Polletter alla börjar med. Lägg 1 för att hoppa över en låt eller utmana, 3 för att köpa ett kort. Säg artist + titel för att tjäna fler (max 5).',
+  'Challenges': 'Utmaningar',
+  'Others can spend a token to bet on a different spot and steal the card.': 'De andra kan lägga en pollett på en annan plats och sno kortet.',
+  'Name it for a token': 'Gissa låten för en pollett',
+  'Say the artist and title out loud: +1 token if you get both.': 'Säg artist och titel högt: +1 pollett om du får båda rätt.',
+  'Everyone gets their own music': 'Alla får sin egen musik',
+  'Songs for each player come from their own packs (plus "Everyone" packs).': 'Varje spelares låtar kommer från deras egna paket (plus paket för ”Alla”).',
+  'Leave out extreme metal': 'Hoppa över extrem metal',
+  'Skips death, black and similar metal.': 'Tar bort death, black och liknande metal.',
+  'Songs start': 'Låtarna börjar',
+  'from the beginning': 'från början',
+  '30 seconds in': '30 sekunder in',
+  'somewhere in the middle': 'någonstans i mitten',
+  'Songs': 'Låtar',
+  '{n} songs in the deck': '{n} låtar i leken',
+  'Genres': 'Genrer',
+  '…or other genres, comma-separated: eurodance, grunge, k-pop (searches Spotify)': '…eller andra genrer, kommaseparerade: eurodance, grunge, k-pop (söker på Spotify)',
+  'Years': 'År',
+  'All years': 'Alla år',
+  'For': 'För',
+  'Add {pack}': 'Lägg till {pack}',
+  'One pack per player with every genre from the years they were 8–28': 'Ett paket per spelare med alla genrer från åren de var 8–28',
+  "Add everyone's era": 'Allas uppväxtår',
+  'From a playlist': 'Från en spellista',
+  'Back to the game': 'Tillbaka till spelet',
+  'New game': 'Nytt spel',
+  'Start the game': 'Starta spelet',
+  'Copy setup link': 'Kopiera länk till inställningarna',
+  'keys: space play/pause, ← → move, enter confirm, U undo': 'tangenter: mellanslag spela/pausa, ← → flytta, enter bekräfta, U ångra',
+  'source': 'källkod',
+  'Language': 'Språk',
+
+  // genres and pack names
+  'Everything': 'Allt',
+  'Rock': 'Rock',
+  'Hard rock': 'Hårdrock',
+  'Metal': 'Metal',
+  'Punk': 'Punk',
+  'Alternative': 'Alternativ',
+  'Indie': 'Indie',
+  'Pop': 'Pop',
+  'Dance & disco': 'Dans & disco',
+  'Soul, funk & R&B': 'Soul, funk & R&B',
+  'Hip-hop': 'Hiphop',
+  'Country': 'Country',
+  'Reggae': 'Reggae',
+  'Swedish': 'Svenskt',
+  'all years': 'alla år',
+  'Playlist: {name}': 'Spellista: {name}',
+
+  // game
+  '1 token': '1 pollett',
+  '{n} tokens': '{n} polletter',
+  'Up next': 'Näst på tur',
+  'Play {poss} song': 'Spela {poss} låt',
+  '{poss} turn': '{poss} tur',
+  'When was this released?': 'När kom den här ut?',
+  'Pick the gap on your timeline where this song fits.': 'Välj luckan på din tidslinje där låten passar in.',
+  'Pick the gap on your timeline where this song fits, and say the artist and title out loud for a bonus token.': 'Välj luckan på din tidslinje där låten passar in, och säg artist och titel högt för en bonuspollett.',
+  'Play/pause (space)': 'Spela/pausa (mellanslag)',
+  'From the start': 'Från början',
+  '⟲ Restart': '⟲ Börja om',
+  'Costs 1 token': 'Kostar 1 pollett',
+  'Skip song': 'Hoppa över',
+  'Costs 3 tokens: the card is placed for you': 'Kostar 3 polletter: kortet läggs ut åt dig',
+  'Buy card': 'Köp kort',
+  'Pick a gap first': 'Välj en lucka först',
+  'Lock it in': 'Lås svaret',
+  'Challenge?': 'Utmana?',
+  'Think {name} got it wrong?': 'Tror du att {name} har fel?',
+  'Spend a token and pick a different gap. If {name} is wrong and you are right, the card is yours.': 'Lägg en pollett och välj en annan lucka. Har {name} fel och du rätt blir kortet ditt.',
+  'challenging · tap to cancel': 'utmanar · tryck för att ångra',
+  'now click a gap': 'klicka nu på en lucka',
+  'no tokens': 'inga polletter',
+  'challenge': 'utmana',
+  'Reveal the song': 'Visa låten',
+  '{name} bought it.': '{name} köpte den.',
+  'Right! {name} keeps the card.': 'Rätt! {name} behåller kortet.',
+  'Wrong spot. {name} steals it!': 'Fel plats. {name} snor den!',
+  'Wrong spot. The card is out.': 'Fel plats. Kortet åker ut.',
+  'See who won': 'Se vem som vann',
+  'Next: {name}': 'Nästa: {name}',
+  '{name} named the artist <i>and</i> the title': '{name} sa artisten <i>och</i> titeln',
+  '❚❚ Pause': '❚❚ Pausa',
+  '▶ Keep listening': '▶ Lyssna vidare',
+  "Everyone's timelines": 'Allas tidslinjer',
+  'Timelines': 'Tidslinjer',
+  'Undo (U)': 'Ångra (U)',
+  'Undo': 'Ångra',
+  'Setup': 'Inställningar',
+  '{who} timeline': '{who} tidslinje',
+  '1 card': '1 kort',
+  '{n} cards': '{n} kort',
+  '{name} is picking a gap': '{name} väljer en lucka',
+  'Winner': 'Vinnare',
+  '{cards} cards · {tokens} tokens': '{cards} kort · {tokens} polletter',
+  'Play again': 'Spela igen',
+  'Pick a playlist': 'Välj en spellista',
+  "Spotify only shares playlists you made or collaborate on. Years come from each song's album.": 'Spotify delar bara spellistor du har gjort eller samarbetar på. Åren kommer från varje låts album.',
+  'No playlists found.': 'Hittade inga spellistor.',
+  'Setup link': 'Länk till inställningarna',
+  'Copy this link:': 'Kopiera den här länken:',
+};

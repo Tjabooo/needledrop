@@ -312,3 +312,7 @@ button.gap:hover:not(.locked) { background: rgba(255,255,255,.04); border-color:
   .platter.spin .record, .busy-disc { animation-duration: 6s; }
   .big-card, .card.new { animation: none; }
 }
+
+/* language switch (SV/EN) */
+.top .lang { margin-left: auto; align-self: center; }
+.btn.lang { min-width: 44px; letter-spacing: .06em; font-weight: 700; }

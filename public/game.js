@@ -92,17 +92,18 @@ export function packGenreIds(pack) {
   return !ids.length || ids.includes('all') ? ['all'] : ids;
 }
 
-export function packLabel(pack) {
+// tr/dec translate the words and decade names (the UI passes its language; default English).
+export function packLabel(pack, tr = (s, v) => (v ? s.replace(/\{(\w+)\}/g, (m, k) => v[k] ?? m) : s), dec = decadeLabel) {
   const g = pack.src === 'lib'
-    ? packGenreIds(pack).map((id) => (GENRES.find((x) => x.id === id) || { label: id }).label).join(' + ')
+    ? packGenreIds(pack).map((id) => { const g = GENRES.find((x) => x.id === id); return g ? tr(g.label) : id; }).join(' + ')
     : pack.genre;
-  if (pack.src === 'playlist') return `Playlist: ${pack.name || pack.genre}`;
+  if (pack.src === 'playlist') return tr('Playlist: {name}', { name: pack.name || pack.genre });
   const decs = [...(pack.decades || [])].sort((a, b) => a - b);
-  let range = 'all years';
-  if (decs.length === DECADES.length) range = 'all years';
+  let range = tr('all years');
+  if (decs.length === DECADES.length) range = tr('all years');
   else if (decs.length && decs.every((d, i) => i === 0 || d - decs[i - 1] === 10)) {
-    range = decs.length === 1 ? decadeLabel(decs[0]) : `${decadeLabel(decs[0])}–${decadeLabel(decs[decs.length - 1])}`;
-  } else if (decs.length) range = decs.map(decadeLabel).join(', ');
+    range = decs.length === 1 ? dec(decs[0]) : `${dec(decs[0])}–${dec(decs[decs.length - 1])}`;
+  } else if (decs.length) range = decs.map(dec).join(', ');
   return `${g} · ${range}`;
 }
 

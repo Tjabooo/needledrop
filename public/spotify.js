@@ -1,5 +1,7 @@
 // Spotify: PKCE login (no client secret), the Web Playback SDK player, playback control and search.
 
+import { t } from './i18n.js';
+
 const SCOPES = [
   'streaming', 'user-read-email', 'user-read-private',
   'user-read-playback-state', 'user-modify-playback-state',
@@ -54,14 +56,14 @@ export class Spotify {
     const err = params.get('error');
     if (!code && !err) return '';
     history.replaceState(null, '', location.pathname + location.hash);
-    if (err) return err === 'access_denied' ? 'Spotify login was cancelled.' : `Spotify said: ${err}`;
+    if (err) return err === 'access_denied' ? t('Spotify login was cancelled.') : t('Spotify said: {err}', { err });
     const verifier = localStorage.getItem(VERIFIER_KEY);
     localStorage.removeItem(VERIFIER_KEY);
     try {
       await this.tokenRequest({ grant_type: 'authorization_code', code, redirect_uri: this.redirectUri, code_verifier: verifier || '' });
       return '';
     } catch (e) {
-      return `Spotify login failed: ${e.message}`;
+      return t('Spotify login failed: {msg}', { msg: e.message });
     }
   }
 
@@ -179,7 +181,7 @@ export class Spotify {
       player.addListener('ready', ({ device_id }) => { this.deviceId = device_id; this.playerState = 'ready'; this.onChange(); });
       player.addListener('not_ready', () => { this.playerState = 'loading'; this.onChange(); });
       player.addListener('player_state_changed', (s) => { this.paused = !s || s.paused; this.position = s?.position || 0; this.onChange(); });
-      const fail = (msg) => ({ message }) => { this.playerState = 'error'; this.playerError = `${msg}: ${message}`; this.onChange(); };
+      const fail = (msg) => ({ message }) => { this.playerState = 'error'; this.playerError = `${t(msg)}: ${message}`; this.onChange(); };
       player.addListener('initialization_error', fail('This browser cannot play Spotify (try Chrome, Edge or Firefox)'));
       player.addListener('authentication_error', fail('Spotify login expired, log in again'));
       player.addListener('account_error', fail('Spotify Premium is needed to play in the browser'));

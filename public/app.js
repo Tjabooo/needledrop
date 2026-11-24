@@ -1,10 +1,11 @@
 import * as G from './game.js';
 import { Spotify } from './spotify.js';
+import { t, lang, setLang, poss, decade } from './i18n.js';
 
 const $app = document.getElementById('app');
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { toast('Browser storage is full: ' + e.message); } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { toast(t('Browser storage is full: {msg}', { msg: e.message })); } },
 };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const uid = () => Math.random().toString(36).slice(2, 9);
@@ -50,7 +51,7 @@ const DEMO = new URLSearchParams(location.search).has('demo');
 class DemoSpotify {
   loggedIn = true; playerState = 'ready'; deviceId = 'demo'; paused = true; onChange() {}
   activate() {} loadPlayer() {} logout() {} async handleRedirect() { return ''; }
-  async me() { return { display_name: 'demo mode (no sound)' }; } async devices() { return []; }
+  async me() { return { display_name: t('demo mode (no sound)') }; } async devices() { return []; }
   async searchTracks(q) {
     const m = q.match(/track:"([^"]*)" artist:"([^"]*)"/);
     if (!m) return [];
@@ -73,10 +74,10 @@ function deviceId() {
 }
 
 function explain(e) {
-  if (e.status === 404) return 'Spotify could not find the player. Open Spotify on this device, or pick "This browser" in setup.';
-  if (e.status === 403) return 'Spotify refused playback (Premium needed, or the account is not added to the app).';
-  if (e.reason === 'QUOTA_EXCEEDED') return 'Spotify rate limit for this app reached; wait a minute.';
-  return e.message || String(e);
+  if (e.status === 404) return t('Spotify could not find the player. Open Spotify on this device, or pick "This browser" in setup.');
+  if (e.status === 403) return t('Spotify refused playback (Premium needed, or the account is not added to the app).');
+  if (e.reason === 'QUOTA_EXCEEDED') return t('Spotify rate limit for this app reached; wait a minute.');
+  return t(e.message || String(e));
 }
 
 async function refreshDevices() {
@@ -119,13 +120,13 @@ async function drawFor(playerIndex) {
   const p = game.players[playerIndex];
   for (let attempt = 0; attempt < 15; attempt++) {
     const pool = G.buildPool(setup.packs, library, game.settings, { owner: p.id, used: game.used });
-    if (!pool.length) throw new Error(`Out of songs${game.settings.ownTaste ? ` for ${p.name}` : ''}: add more song packs in setup.`);
+    if (!pool.length) throw new Error(game.settings.ownTaste ? t('Out of songs for {name}: add more song packs in setup.', { name: p.name }) : t('Out of songs: add more song packs in setup.'));
     const song = G.pick(pool);
     const card = await resolveSong(song);
     if (card) return card;
     game.used.push(song.k);
   }
-  throw new Error('Spotify did not find the last songs it was asked for. Try again.');
+  throw new Error(t('Spotify did not find the last songs it was asked for. Try again.'));
 }
 
 function startPosition(card) {
@@ -137,7 +138,7 @@ function startPosition(card) {
 
 async function playCard(card) {
   const dev = deviceId();
-  if (!dev) { toast(setup.device === 'browser' ? 'The browser player is still starting. Press play in a moment.' : 'Pick a Spotify device in setup.'); return; }
+  if (!dev) { toast(setup.device === 'browser' ? t('The browser player is still starting. Press play in a moment.') : t('Pick a Spotify device in setup.')); return; }
   try {
     await sp.play(dev, card.uri, startPosition(card));
     ui.started = card.k; // only once this song really started: a failed start must not "resume" the last Spotify song
@@ -181,21 +182,21 @@ function snapshot() {
 
 function undo() {
   const prev = undoStack.pop();
-  if (!prev) { toast('Nothing to undo'); return; }
+  if (!prev) { toast(t('Nothing to undo')); return; }
   game = JSON.parse(prev);
   ui.challenger = null;
   saveGame();
-  toast('Undone');
+  toast(t('Undone'));
 }
 
 function preflight() {
-  if (!sp) { toast('Connect Spotify first (top of the page).'); return false; }
+  if (!sp) { toast(t('Connect Spotify first (top of the page).')); return false; }
   if (!sp.loggedIn) { toast('Log in to Spotify first.'); return false; }
-  if (!setup.players.length) { toast('Add at least one player.'); return false; }
-  if (setup.players.some((p) => !p.name.trim())) { toast('Every player needs a name.'); return false; }
+  if (!setup.players.length) { toast(t('Add at least one player.')); return false; }
+  if (setup.players.some((p) => !p.name.trim())) { toast(t('Every player needs a name.')); return false; }
   const pool = G.buildPool(setup.packs, library, setup.settings, {});
   if (pool.length < setup.players.length * (setup.settings.target + 2)) {
-    toast(`Only ${pool.length} songs in your packs: add a few more so nobody runs dry.`);
+    toast(t('Only {n} songs in your packs: add a few more so nobody runs dry.', { n: pool.length }));
     return pool.length > setup.players.length * 2;
   }
   return true;
@@ -212,7 +213,7 @@ async function startGame() {
   game = G.newGame(setup);
   undoStack = [];
   ui.view = 'game';
-  ui.busy = 'Dealing a starting card to everyone…';
+  ui.busy = t('Dealing a starting card to everyone…');
   render();
   try {
     for (let i = 0; i < game.players.length; i++) G.dealStarter(game, i, await drawFor(i));
@@ -227,7 +228,7 @@ async function startGame() {
 }
 
 async function beginTurn() {
-  ui.busy = 'Finding a record…';
+  ui.busy = t('Finding a record…');
   ui.challenger = null;
   render();
   try {
@@ -248,7 +249,7 @@ async function beginTurn() {
 async function skipSong() {
   if (!G.canSkip(game)) return;
   snapshot();
-  ui.busy = 'Spinning another one…';
+  ui.busy = t('Spinning another one…');
   render();
   try {
     const card = await drawFor(game.current); // the current card is already in game.used
@@ -303,13 +304,13 @@ async function addPack() {
     ? { id: uid(), src: 'spotify', genre: other, decades: b.decades.slice().sort(), owner: b.owner }
     : { id: uid(), src: 'lib', genres: G.packGenreIds({ genres: b.genres }), decades: b.decades.slice().sort(), owner: b.owner };
   if (setup.packs.some((p) => p.src === pack.src && G.packLabel(p).toLowerCase() === G.packLabel(pack).toLowerCase() && p.owner === pack.owner)) {
-    toast('That pack is already in the list.');
+    toast(t('That pack is already in the list.'));
     return;
   }
   if (pack.src === 'spotify') {
-    if (!sp?.loggedIn) { toast('Log in to Spotify to search other genres.'); return; }
+    if (!sp?.loggedIn) { toast(t('Log in to Spotify to search other genres.')); return; }
     await loadSearchPack(pack);
-    if (!pack.songs.length) { toast(`Spotify had nothing for "${other}" in those years. Try another spelling (e.g. "eurodance", "swedish pop", "grunge").`, 7000); return; }
+    if (!pack.songs.length) { toast(t('Spotify had nothing for "{genre}" in those years. Try another spelling (e.g. "eurodance", "swedish pop", "grunge").', { genre: other }), 7000); return; }
   }
   setup.packs.push(pack);
   b.other = '';
@@ -326,7 +327,7 @@ async function loadSearchPack(pack) {
     const range = `${d}-${Math.min(d + 9, new Date().getFullYear())}`;
     let q = `genre:"${g}" year:${range}`;
     for (let page = 0; page < 6; page++) {
-      ui.busy = `Searching Spotify for ${g} from the ${G.decadeLabel(d)}… ${songs.length} songs`;
+      ui.busy = t('Searching Spotify for {genre} from the {decade}… {n} songs', { genre: g, decade: decade(d), n: songs.length });
       render();
       let items;
       try { items = await sp.searchTracks(q, { offset: page * 10 }); } catch (e) { toast(explain(e)); break; }
@@ -350,7 +351,7 @@ async function reloadPack(id) {
 
 async function openPlaylists() {
   if (!sp?.loggedIn) { toast('Log in to Spotify first.'); return; }
-  ui.busy = 'Fetching your playlists…';
+  ui.busy = t('Fetching your playlists…');
   render();
   try {
     const lists = await sp.myPlaylists();
@@ -363,12 +364,12 @@ async function openPlaylists() {
 async function addPlaylist(id) {
   const pl = ui.modal?.lists?.find((l) => l.id === id);
   ui.modal = null;
-  ui.busy = `Reading ${pl?.name || 'playlist'}…`;
+  ui.busy = t('Reading {name}…', { name: pl?.name || t('playlist') });
   render();
   try {
     const tracks = await sp.playlistTracks(id);
     const songs = G.songsFromTracks(tracks, { src: 'playlist' });
-    if (!songs.length) toast('Spotify returned no songs: only playlists you made (or collaborate on) can be read.', 7000);
+    if (!songs.length) toast(t('Spotify returned no songs: only playlists you made (or collaborate on) can be read.'), 7000);
     else {
       setup.packs.push({ id: uid(), src: 'playlist', genre: pl?.name || 'Playlist', name: pl?.name, playlistId: id, decades: [], owner: ui.builder.owner, songs });
       saveSetup();
@@ -388,12 +389,12 @@ function addEras() {
     added++;
   }
   saveSetup();
-  toast(added ? `Added ${added} "growing up" pack${added > 1 ? 's' : ''}. Edit or remove any of them.` : 'Fill in birth years first (or they already have one).');
+  toast(added === 1 ? t('Added 1 "growing up" pack. Edit or remove it if you like.') : added ? t('Added {n} "growing up" packs. Edit or remove any of them.', { n: added }) : t('Fill in birth years first (or they already have one).'));
 }
 
 async function copySetupLink() {
   const url = `${location.origin}/#s=${G.encodeSetup(setup)}`;
-  try { await navigator.clipboard.writeText(url); toast('Setup link copied: open it on another device to get the same players, packs and rules.'); }
+  try { await navigator.clipboard.writeText(url); toast(t('Setup link copied: open it on another device to get the same players, packs and rules.')); }
   catch { ui.modal = { type: 'link', url }; render(); }
 }
 
@@ -411,42 +412,54 @@ function logo(small) {
   return `<div class="logo ${small ? 'small' : ''}"><span class="logo-disc"></span><span>Needle<b>drop</b></span></div>`;
 }
 
+// Translator alias for functions where `t` is the current turn.
+const tr = t;
+const TITLE = 'Needledrop: guess the year';
+
+// Pack names in the current language (game.js builds the English one, which also serves as the duplicate check key).
+const packName = (p) => G.packLabel(p, t, decade);
+
+function langSwitch() {
+  const next = lang === 'sv' ? 'EN' : 'SV';
+  return `<button class="btn ghost small lang" data-action="lang" title="${lang === 'sv' ? 'Switch to English' : 'Byt till svenska'}" aria-label="${t('Language')}: ${next}">${next}</button>`;
+}
+
 function spotifyPanel() {
   if (!sp) {
     return `<section class="panel spotify-setup">
-      <h2>Connect Spotify</h2>
-      <p>Songs play through Spotify (Premium) on this device. Spotify needs a free app key once:</p>
+      <h2>${t('Connect Spotify')}</h2>
+      <p>${t('Songs play through Spotify (Premium) on this device. Spotify needs a free app key once:')}</p>
       <ol>
-        <li>Open <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">developer.spotify.com/dashboard</a> and log in.</li>
-        <li><b>Create app</b>: any name, tick <b>Web API</b> and <b>Web Playback SDK</b>, and add this Redirect URI:
+        <li>${t('Open {link} and log in.', { link: '<a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">developer.spotify.com/dashboard</a>' })}</li>
+        <li>${t('<b>Create app</b>: any name, tick <b>Web API</b> and <b>Web Playback SDK</b>, and add this Redirect URI:')}
           <code class="copy" data-action="copy" data-text="${esc(REDIRECT)}">${esc(REDIRECT)}</code></li>
-        <li>Paste the app's <b>Client ID</b> here:</li>
+        <li>${t("Paste the app's <b>Client ID</b> here:")}</li>
       </ol>
-      <div class="inline"><input id="clientId" placeholder="Client ID" autocomplete="off" spellcheck="false"><button class="btn" data-action="saveClient">Save</button></div>
+      <div class="inline"><input id="clientId" placeholder="Client ID" autocomplete="off" spellcheck="false"><button class="btn" data-action="saveClient">${t('Save')}</button></div>
     </section>`;
   }
   if (!sp.loggedIn) {
     return `<section class="panel spotify-setup compact">
       <h2>Spotify</h2>
-      <p>Log in with the Premium account that should play the music.</p>
-      <div class="inline"><button class="btn spotify" data-action="login">Log in with Spotify</button>
-      <button class="btn ghost small" data-action="forgetClient">Change app key</button></div>
+      <p>${t('Log in with the Premium account that should play the music.')}</p>
+      <div class="inline"><button class="btn spotify" data-action="login">${t('Log in with Spotify')}</button>
+      <button class="btn ghost small" data-action="forgetClient">${t('Change app key')}</button></div>
     </section>`;
   }
-  const state = { off: 'starting…', loading: 'starting…', ready: 'ready', error: 'error' }[sp.playerState];
-  const opts = [`<option value="browser" ${setup.device === 'browser' ? 'selected' : ''}>This browser (${state})</option>`]
+  const state = t({ off: 'starting…', loading: 'starting…', ready: 'ready', error: 'error' }[sp.playerState]);
+  const opts = [`<option value="browser" ${setup.device === 'browser' ? 'selected' : ''}>${t('This browser ({state})', { state })}</option>`]
     .concat(ui.devices.filter((d) => d.name !== 'Needledrop').map((d) => `<option value="${esc(d.id)}" ${setup.device === d.id ? 'selected' : ''}>${esc(d.name)} (${esc(d.type)})</option>`));
-  if (setup.device !== 'browser' && !ui.devices.some((d) => d.id === setup.device)) opts.push(`<option value="${esc(setup.device)}" selected>Saved device (not seen right now)</option>`);
+  if (setup.device !== 'browser' && !ui.devices.some((d) => d.id === setup.device)) opts.push(`<option value="${esc(setup.device)}" selected>${t('Saved device (not seen right now)')}</option>`);
   return `<section class="panel spotify-setup compact">
     <h2>Spotify</h2>
-    <p class="ok">Logged in${ui.me?.display_name ? ` as <b>${esc(ui.me.display_name)}</b>` : ''}.</p>
-    <label class="field">Play on
+    <p class="ok">${ui.me?.display_name ? t('Logged in as {name}.', { name: `<b>${esc(ui.me.display_name)}</b>` }) : t('Logged in.')}</p>
+    <label class="field">${t('Play on')}
       <span class="inline"><select data-action="device">${opts.join('')}</select>
-      <button class="btn ghost small" data-action="devices" title="Look for Spotify apps on this network">↻</button></span>
+      <button class="btn ghost small" data-action="devices" title="${t('Look for Spotify apps on this network')}">↻</button></span>
     </label>
-    ${sp.playerState === 'error' && setup.device === 'browser' ? `<p class="warn">${esc(sp.playerError)} You can also open the Spotify app on this laptop and pick it above.</p>` : ''}
-    <p class="hint">Tip: "This browser" hides the song best. If you pick the Spotify app, keep its window out of sight.</p>
-    <div class="inline"><button class="btn ghost small" data-action="logout">Log out</button></div>
+    ${sp.playerState === 'error' && setup.device === 'browser' ? `<p class="warn">${esc(sp.playerError)} ${t('You can also open the Spotify app on this laptop and pick it above.')}</p>` : ''}
+    <p class="hint">${esc(t('Tip: "This browser" hides the song best. If you pick the Spotify app, keep its window out of sight.'))}</p>
+    <div class="inline"><button class="btn ghost small" data-action="logout">${t('Log out')}</button></div>
   </section>`;
 }
 
@@ -454,97 +467,97 @@ function renderSetup() {
   const s = setup.settings;
   const players = setup.players.map((p, i) => `
     <div class="player-row" style="--pc:${p.color}">
-      <button class="swatch" data-action="color" data-id="${p.id}" title="Change colour"></button>
-      <input data-field="name" data-id="${p.id}" value="${esc(p.name)}" placeholder="Player ${i + 1}" maxlength="18">
-      <input data-field="born" data-id="${p.id}" value="${esc(p.born)}" placeholder="Born" inputmode="numeric" maxlength="4" class="born">
-      <button class="btn ghost small" data-action="era" data-id="${p.id}" title="Pick songs from the years they grew up">Their era</button>
-      <button class="icon" data-action="removePlayer" data-id="${p.id}" title="Remove">✕</button>
+      <button class="swatch" data-action="color" data-id="${p.id}" title="${t('Change colour')}"></button>
+      <input data-field="name" data-id="${p.id}" value="${esc(p.name)}" placeholder="${t('Player {n}', { n: i + 1 })}" maxlength="18">
+      <input data-field="born" data-id="${p.id}" value="${esc(p.born)}" placeholder="${t('Born')}" inputmode="numeric" maxlength="4" class="born">
+      <button class="btn ghost small" data-action="era" data-id="${p.id}" title="${t('Pick songs from the years they grew up')}">${t('Their era')}</button>
+      <button class="icon" data-action="removePlayer" data-id="${p.id}" title="${t('Remove')}">✕</button>
     </div>`).join('');
 
-  const owners = [{ id: 'all', name: 'Everyone' }].concat(setup.players.map((p) => ({ id: p.id, name: p.name || 'Unnamed' })));
-  const ownerName = (id) => owners.find((o) => o.id === id)?.name || 'Everyone';
+  const owners = [{ id: 'all', name: t('Everyone') }].concat(setup.players.map((p) => ({ id: p.id, name: p.name || t('Unnamed') })));
+  const ownerName = (id) => owners.find((o) => o.id === id)?.name || t('Everyone');
   const ownerColor = (id) => setup.players.find((p) => p.id === id)?.color || 'var(--dim)';
 
   const packs = setup.packs.map((p) => {
     const n = G.packSongs(p, library, s).length;
     return `<div class="pack ${p.off ? 'off' : ''}">
-      <button class="toggle ${p.off ? '' : 'on'}" data-action="togglePack" data-id="${p.id}" title="${p.off ? 'Turn on' : 'Turn off'}"></button>
-      <div class="pack-main"><b>${esc(G.packLabel(p))}</b>
-        <span class="meta">${n} songs · <span class="owner" style="--oc:${ownerColor(p.owner)}">${esc(ownerName(p.owner))}</span>${p.src === 'spotify' ? ' · from Spotify search' : ''}</span></div>
-      ${p.src === 'spotify' ? `<button class="icon" data-action="reloadPack" data-id="${p.id}" title="Search again">↻</button>` : ''}
-      <button class="icon" data-action="removePack" data-id="${p.id}" title="Remove">✕</button>
+      <button class="toggle ${p.off ? '' : 'on'}" data-action="togglePack" data-id="${p.id}" title="${p.off ? t('Turn on') : t('Turn off')}"></button>
+      <div class="pack-main"><b>${esc(packName(p))}</b>
+        <span class="meta">${t('{n} songs', { n })} · <span class="owner" style="--oc:${ownerColor(p.owner)}">${esc(ownerName(p.owner))}</span>${p.src === 'spotify' ? t(' · from Spotify search') : ''}</span></div>
+      ${p.src === 'spotify' ? `<button class="icon" data-action="reloadPack" data-id="${p.id}" title="${t('Search again')}">↻</button>` : ''}
+      <button class="icon" data-action="removePack" data-id="${p.id}" title="${t('Remove')}">✕</button>
     </div>`;
-  }).join('') || '<p class="empty">No song packs yet. Pick genres and years below and press the orange <b>Add</b> button (or just <b>Start the game</b> to use what\'s picked).</p>';
+  }).join('') || `<p class="empty">${t("No song packs yet. Pick genres and years below and press the orange <b>Add</b> button (or just <b>Start the game</b> to use what's picked).")}</p>`;
 
   const b = ui.builder;
   const count = builderCount();
   const gOn = G.packGenreIds({ genres: b.genres });
-  const genreChips = G.GENRES.map((g) => `<button class="chip ${!b.other && gOn.includes(g.id) ? 'on' : ''}" data-action="genre" data-id="${g.id}">${esc(g.label)}</button>`).join('');
-  const decadeChips = G.DECADES.map((d) => `<button class="chip ${b.decades.includes(d) ? 'on' : ''}" data-action="decade" data-id="${d}">${G.decadeLabel(d)}</button>`).join('');
-  const preview = G.packLabel({ src: b.other.trim() ? 'spotify' : 'lib', genre: b.other.trim(), genres: b.genres, decades: b.decades });
+  const genreChips = G.GENRES.map((g) => `<button class="chip ${!b.other && gOn.includes(g.id) ? 'on' : ''}" data-action="genre" data-id="${g.id}">${esc(t(g.label))}</button>`).join('');
+  const decadeChips = G.DECADES.map((d) => `<button class="chip ${b.decades.includes(d) ? 'on' : ''}" data-action="decade" data-id="${d}">${decade(d)}</button>`).join('');
+  const preview = packName({ src: b.other.trim() ? 'spotify' : 'lib', genre: b.other.trim(), genres: b.genres, decades: b.decades });
   const pool = G.buildPool(setup.packs, library, s, {}).length;
 
   const inGame = game && game.phase !== 'over';
   return `<div class="setup">
-    <header class="top">${logo()}<p class="tag">The song plays, you guess the year. One laptop, the whole table.</p></header>
+    <header class="top">${logo()}<p class="tag">${t('The song plays, you guess the year. One laptop, the whole table.')}</p>${langSwitch()}</header>
     <div class="setup-grid">
       <div class="col">
         ${spotifyPanel()}
         <section class="panel">
-          <h2>Players</h2>
-          ${players || '<p class="empty">Add everyone who plays. Birth years are optional: they help pick songs from each person\'s era.</p>'}
-          <div class="inline"><button class="btn ghost" data-action="addPlayer">+ Add player</button></div>
+          <h2>${t('Players')}</h2>
+          ${players || `<p class="empty">${t("Add everyone who plays. Birth years are optional: they help pick songs from each person's era.")}</p>`}
+          <div class="inline"><button class="btn ghost" data-action="addPlayer">${t('+ Add player')}</button></div>
         </section>
         <section class="panel rules">
-          <h2>Rules</h2>
-          <label class="field row switch-row"><span><b>Cards to win</b><small>First to this many cards on their timeline wins.</small></span><input type="number" min="3" max="30" data-setting="target" value="${s.target}"></label>
-          <label class="field row switch-row"><span><b>Starting tokens</b><small>Coins everyone starts with. Spend 1 to skip a song or challenge, 3 to buy a card. Name artist + title to earn more (max 5).</small></span><input type="number" min="0" max="5" data-setting="startTokens" value="${s.startTokens}"></label>
+          <h2>${t('Rules')}</h2>
+          <label class="field row switch-row"><span><b>${t('Cards to win')}</b><small>${t('First to this many cards on their timeline wins.')}</small></span><input type="number" min="3" max="30" data-setting="target" value="${s.target}"></label>
+          <label class="field row switch-row"><span><b>${t('Starting tokens')}</b><small>${t('Coins everyone starts with. Spend 1 to skip a song or challenge, 3 to buy a card. Name artist + title to earn more (max 5).')}</small></span><input type="number" min="0" max="5" data-setting="startTokens" value="${s.startTokens}"></label>
           ${switchRow('challenges', 'Challenges', 'Others can spend a token to bet on a different spot and steal the card.')}
           ${switchRow('nameBonus', 'Name it for a token', 'Say the artist and title out loud: +1 token if you get both.')}
           ${switchRow('ownTaste', 'Everyone gets their own music', 'Songs for each player come from their own packs (plus "Everyone" packs).')}
           ${switchRow('noExtreme', 'Leave out extreme metal', 'Skips death, black and similar metal.', s.exclude.includes('extreme'))}
-          <label class="field row">Songs start <select data-setting="startAt">
-            <option value="start" ${s.startAt === 'start' ? 'selected' : ''}>from the beginning</option>
-            <option value="30" ${s.startAt === '30' ? 'selected' : ''}>30 seconds in</option>
-            <option value="random" ${s.startAt === 'random' ? 'selected' : ''}>somewhere in the middle</option></select></label>
+          <label class="field row">${t('Songs start')} <select data-setting="startAt">
+            <option value="start" ${s.startAt === 'start' ? 'selected' : ''}>${t('from the beginning')}</option>
+            <option value="30" ${s.startAt === '30' ? 'selected' : ''}>${t('30 seconds in')}</option>
+            <option value="random" ${s.startAt === 'random' ? 'selected' : ''}>${t('somewhere in the middle')}</option></select></label>
         </section>
       </div>
       <div class="col">
         <section class="panel songs">
-          <div class="head"><h2>Songs</h2><span class="meta">${pool} songs in the deck</span></div>
+          <div class="head"><h2>${t('Songs')}</h2><span class="meta">${t('{n} songs in the deck', { n: pool })}</span></div>
           <div class="packs">${packs}</div>
           <div class="builder">
-            <div class="brow"><span class="lbl">Genres</span><div class="chips">${genreChips}</div></div>
-            <div class="brow"><span class="lbl"></span><input class="other" data-field="other" value="${esc(b.other)}" placeholder="…or other genres, comma-separated: eurodance, grunge, k-pop (searches Spotify)"></div>
-            <div class="brow"><span class="lbl">Years</span><div class="chips">${decadeChips}<button class="chip ${b.decades.length ? '' : 'on'}" data-action="decade" data-id="all">All years</button></div></div>
-            <div class="brow"><span class="lbl">For</span><div class="chips">${owners.map((o) => `<button class="chip ${b.owner === o.id ? 'on' : ''}" data-action="owner" data-id="${o.id}">${esc(o.name)}</button>`).join('')}</div></div>
+            <div class="brow"><span class="lbl">${t('Genres')}</span><div class="chips">${genreChips}</div></div>
+            <div class="brow"><span class="lbl"></span><input class="other" data-field="other" value="${esc(b.other)}" placeholder="${t('…or other genres, comma-separated: eurodance, grunge, k-pop (searches Spotify)')}"></div>
+            <div class="brow"><span class="lbl">${t('Years')}</span><div class="chips">${decadeChips}<button class="chip ${b.decades.length ? '' : 'on'}" data-action="decade" data-id="all">${t('All years')}</button></div></div>
+            <div class="brow"><span class="lbl">${t('For')}</span><div class="chips">${owners.map((o) => `<button class="chip ${b.owner === o.id ? 'on' : ''}" data-action="owner" data-id="${o.id}">${esc(o.name)}</button>`).join('')}</div></div>
             <div class="inline wrap">
-              <button class="btn" data-action="addPack">Add ${esc(preview)}${count != null ? ` <span class="count">${count}</span>` : ''}</button>
-              <button class="btn ghost" data-action="eras" title="One pack per player with every genre from the years they were 8–28">Add everyone's era</button>
-              <button class="btn ghost" data-action="playlists">From a playlist</button>
+              <button class="btn" data-action="addPack">${t('Add {pack}', { pack: esc(preview) })}${count != null ? ` <span class="count">${count}</span>` : ''}</button>
+              <button class="btn ghost" data-action="eras" title="${t('One pack per player with every genre from the years they were 8–28')}">${t("Add everyone's era")}</button>
+              <button class="btn ghost" data-action="playlists">${t('From a playlist')}</button>
             </div>
           </div>
         </section>
         <div class="start">
-          ${inGame ? '<button class="btn big" data-action="resume">Back to the game</button><button class="btn ghost" data-action="start">New game</button>' : '<button class="btn big" data-action="start">Start the game</button>'}
-          <button class="btn ghost small" data-action="share">Copy setup link</button>
+          ${inGame ? `<button class="btn big" data-action="resume">${t('Back to the game')}</button><button class="btn ghost" data-action="start">${t('New game')}</button>` : `<button class="btn big" data-action="start">${t('Start the game')}</button>`}
+          <button class="btn ghost small" data-action="share">${t('Copy setup link')}</button>
         </div>
       </div>
     </div>
-    <footer>Needledrop · <a href="https://github.com/Tjabooo/needledrop" target="_blank" rel="noopener">source</a> · keys: space play/pause, ← → move, enter confirm, U undo</footer>
+    <footer>Needledrop · <a href="https://github.com/Tjabooo/needledrop" target="_blank" rel="noopener">${t('source')}</a> · ${t('keys: space play/pause, ← → move, enter confirm, U undo')}</footer>
   </div>`;
 }
 
 function switchRow(key, label, hint, on) {
   const value = on ?? setup.settings[key];
-  return `<div class="field row switch-row"><span><b>${label}</b><small>${hint}</small></span>
+  return `<div class="field row switch-row"><span><b>${t(label)}</b><small>${esc(t(hint))}</small></span>
     <button class="toggle ${value ? 'on' : ''}" data-action="setting" data-id="${key}" aria-pressed="${value}"></button></div>`;
 }
 
 function coins(n, max) {
   let out = '';
   for (let i = 0; i < Math.max(n, max); i++) out += `<i class="${i < n ? 'full' : ''}"></i>`;
-  return `<span class="coins" title="${n} token${n === 1 ? '' : 's'}">${out}</span>`;
+  return `<span class="coins" title="${n === 1 ? t('1 token') : t('{n} tokens', { n })}">${out}</span>`;
 }
 
 function scoreboard() {
@@ -617,25 +630,25 @@ function renderGame() {
 
   if (game.phase === 'deal' || game.phase === 'draw' || !t) {
     stage = `<div class="stage-center">
-      <p class="eyebrow" style="--pc:${p.color}">Up next</p>
+      <p class="eyebrow" style="--pc:${p.color}">${tr('Up next')}</p>
       <h1 class="who" style="--pc:${p.color}">${esc(p.name)}</h1>
-      <button class="btn big" data-action="draw">Play ${esc(p.name)}'s song</button>
+      <button class="btn big" data-action="draw">${tr('Play {poss} song', { poss: esc(poss(p.name)) })}</button>
     </div>`;
   } else if (game.phase === 'listen') {
     tlMode = 'place';
     stage = `<div class="stage-split">
       ${vinyl(p, false)}
       <div class="stage-side">
-        <p class="eyebrow" style="--pc:${p.color}">${esc(p.name)}'s turn</p>
-        <h1>When was this released?</h1>
-        <p class="lead">Pick the gap on your timeline where this song fits${game.settings.nameBonus ? ', and say the artist and title out loud for a bonus token' : ''}.</p>
+        <p class="eyebrow" style="--pc:${p.color}">${tr('{poss} turn', { poss: esc(poss(p.name)) })}</p>
+        <h1>${tr('When was this released?')}</h1>
+        <p class="lead">${game.settings.nameBonus ? tr('Pick the gap on your timeline where this song fits, and say the artist and title out loud for a bonus token.') : tr('Pick the gap on your timeline where this song fits.')}</p>
         <div class="controls">
-          <button class="btn round" data-action="play" title="Play/pause (space)">${ui.playing ? '❚❚' : '▶'}</button>
-          <button class="btn ghost" data-action="replay" title="From the start">⟲ Restart</button>
-          <button class="btn ghost" data-action="skip" ${G.canSkip(game) ? '' : 'disabled'} title="Costs 1 token">Skip song <span class="cost">1</span></button>
-          <button class="btn ghost" data-action="buy" ${G.canBuy(game) ? '' : 'disabled'} title="Costs 3 tokens: the card is placed for you">Buy card <span class="cost">3</span></button>
+          <button class="btn round" data-action="play" title="${tr('Play/pause (space)')}">${ui.playing ? '❚❚' : '▶'}</button>
+          <button class="btn ghost" data-action="replay" title="${tr('From the start')}">${tr('⟲ Restart')}</button>
+          <button class="btn ghost" data-action="skip" ${G.canSkip(game) ? '' : 'disabled'} title="${tr('Costs 1 token')}">${tr('Skip song')} <span class="cost">1</span></button>
+          <button class="btn ghost" data-action="buy" ${G.canBuy(game) ? '' : 'disabled'} title="${tr('Costs 3 tokens: the card is placed for you')}">${tr('Buy card')} <span class="cost">3</span></button>
         </div>
-        <button class="btn big lock" data-action="lock" ${t.slot == null ? 'disabled' : ''}>${t.slot == null ? 'Pick a gap first' : 'Lock it in'}</button>
+        <button class="btn big lock" data-action="lock" ${t.slot == null ? 'disabled' : ''}>${t.slot == null ? tr('Pick a gap first') : tr('Lock it in')}</button>
       </div>
     </div>`;
   } else if (game.phase === 'challenge') {
@@ -644,18 +657,18 @@ function renderGame() {
     stage = `<div class="stage-split">
       ${vinyl(p, false)}
       <div class="stage-side">
-        <p class="eyebrow" style="--pc:${p.color}">Challenge?</p>
-        <h1>Think ${esc(p.name)} got it wrong?</h1>
-        <p class="lead">Spend a token and pick a different gap. If ${esc(p.name)} is wrong and you are right, the card is yours.</p>
+        <p class="eyebrow" style="--pc:${p.color}">${tr('Challenge?')}</p>
+        <h1>${tr('Think {name} got it wrong?', { name: esc(p.name) })}</h1>
+        <p class="lead">${tr('Spend a token and pick a different gap. If {name} is wrong and you are right, the card is yours.', { name: esc(p.name) })}</p>
         <div class="challengers">
           ${others.map((o) => {
             const c = t.challengers.find((x) => x.player === o.id);
             const active = ui.challenger === o.id;
             return `<button class="chal ${active ? 'on' : ''} ${c ? 'placed' : ''}" style="--pc:${o.color}" data-action="challenger" data-id="${o.id}" ${!c && o.tokens < 1 ? 'disabled' : ''}>
-              <b>${esc(o.name)}</b> ${coins(o.tokens, 0)}<small>${c ? 'challenging · tap to cancel' : active ? 'now click a gap' : o.tokens < 1 ? 'no tokens' : 'challenge'}</small></button>`;
+              <b>${esc(o.name)}</b> ${coins(o.tokens, 0)}<small>${tr(c ? 'challenging · tap to cancel' : active ? 'now click a gap' : o.tokens < 1 ? 'no tokens' : 'challenge')}</small></button>`;
           }).join('')}
         </div>
-        <button class="btn big lock" data-action="reveal">Reveal the song</button>
+        <button class="btn big lock" data-action="reveal">${tr('Reveal the song')}</button>
       </div>
     </div>`;
   } else if (game.phase === 'reveal') {
@@ -663,11 +676,11 @@ function renderGame() {
     const r = t.result;
     const winner = r.winner && game.players.find((x) => x.id === r.winner);
     let verdict;
-    if (r.bought) verdict = `<span class="good">${esc(p.name)} bought it.</span>`;
-    else if (r.correct) verdict = `<span class="good">Right! ${esc(p.name)} keeps the card.</span>`;
-    else if (winner) verdict = `<span class="steal" style="--pc:${winner.color}">Wrong spot. ${esc(winner.name)} steals it!</span>`;
-    else verdict = `<span class="bad">Wrong spot. The card is out.</span>`;
-    const next = game.winner ? 'See who won' : `Next: ${esc(game.players[(game.current + 1) % game.players.length].name)}`;
+    if (r.bought) verdict = `<span class="good">${tr('{name} bought it.', { name: esc(p.name) })}</span>`;
+    else if (r.correct) verdict = `<span class="good">${tr('Right! {name} keeps the card.', { name: esc(p.name) })}</span>`;
+    else if (winner) verdict = `<span class="steal" style="--pc:${winner.color}">${tr('Wrong spot. {name} steals it!', { name: esc(winner.name) })}</span>`;
+    else verdict = `<span class="bad">${tr('Wrong spot. The card is out.')}</span>`;
+    const next = game.winner ? tr('See who won') : tr('Next: {name}', { name: esc(game.players[(game.current + 1) % game.players.length].name) });
     stage = `<div class="stage-split">
       ${vinyl(p, true)}
       <div class="stage-side reveal">
@@ -678,9 +691,9 @@ function renderGame() {
         </div>
         <p class="verdict">${verdict}</p>
         ${game.settings.nameBonus && !r.bought ? `<button class="named ${t.named ? 'on' : ''}" data-action="named">
-          <span class="box">${t.named ? '✓' : ''}</span><span>${esc(p.name)} named the artist <i>and</i> the title</span><span class="cost">+1</span></button>` : ''}
+          <span class="box">${t.named ? '✓' : ''}</span><span>${tr('{name} named the artist <i>and</i> the title', { name: esc(p.name) })}</span><span class="cost">+1</span></button>` : ''}
         <div class="inline"><button class="btn big" data-action="next">${next} →</button>
-        <button class="btn ghost" data-action="play">${ui.playing ? '❚❚ Pause' : '▶ Keep listening'}</button></div>
+        <button class="btn ghost" data-action="play">${tr(ui.playing ? '❚❚ Pause' : '▶ Keep listening')}</button></div>
       </div>
     </div>`;
   }
@@ -688,13 +701,13 @@ function renderGame() {
   return `<div class="game">
     <header class="gtop">${logo(true)}<div class="scores">${scoreboard()}</div>
       <div class="gmenu">
-        <button class="btn ghost small" data-action="timelines" title="Everyone's timelines">Timelines</button>
-        <button class="btn ghost small" data-action="undo" ${undoStack.length ? '' : 'disabled'} title="Undo (U)">Undo</button>
-        <button class="btn ghost small" data-action="setup">Setup</button>
+        <button class="btn ghost small" data-action="timelines" title="${tr("Everyone's timelines")}">${tr('Timelines')}</button>
+        <button class="btn ghost small" data-action="undo" ${undoStack.length ? '' : 'disabled'} title="${tr('Undo (U)')}">${tr('Undo')}</button>
+        <button class="btn ghost small" data-action="setup">${tr('Setup')}</button>${langSwitch()}
       </div></header>
     <main class="stage">${stage}</main>
     <section class="tl-wrap" style="--pc:${p.color}">
-      <div class="tl-head"><b>${esc(p.name)}</b>'s timeline <span class="meta">${p.timeline.length} card${p.timeline.length === 1 ? '' : 's'}${tlMode === 'challenge' && ui.challenger ? ` · ${esc(game.players.find((x) => x.id === ui.challenger).name)} is picking a gap` : ''}</span></div>
+      <div class="tl-head">${tr('{who} timeline', { who: `<b>${esc(poss(p.name))}</b>` })} <span class="meta">${p.timeline.length === 1 ? tr('1 card') : tr('{n} cards', { n: p.timeline.length })}${tlMode === 'challenge' && ui.challenger ? ` · ${tr('{name} is picking a gap', { name: esc(game.players.find((x) => x.id === ui.challenger).name) })}` : ''}</span></div>
       ${timelineHtml(p, tlMode)}
     </section>
   </div>`;
@@ -704,12 +717,12 @@ function renderOver() {
   const st = G.standings(game);
   const w = game.players.find((p) => p.id === game.winner) || game.players.find((p) => p.id === st[0].id);
   return `<div class="game over">
-    <header class="gtop">${logo(true)}<div class="scores">${scoreboard()}</div><div class="gmenu"><button class="btn ghost small" data-action="undo">Undo</button></div></header>
+    <header class="gtop">${logo(true)}<div class="scores">${scoreboard()}</div><div class="gmenu"><button class="btn ghost small" data-action="undo">${t('Undo')}</button>${langSwitch()}</div></header>
     <main class="stage"><div class="stage-center">
-      <p class="eyebrow" style="--pc:${w.color}">Winner</p>
+      <p class="eyebrow" style="--pc:${w.color}">${t('Winner')}</p>
       <h1 class="who" style="--pc:${w.color}">${esc(w.name)}</h1>
-      <ol class="podium">${st.map((s) => `<li style="--pc:${s.color}"><b>${esc(s.name)}</b><span>${s.cards} cards · ${s.tokens} tokens</span></li>`).join('')}</ol>
-      <div class="inline"><button class="btn big" data-action="again">Play again</button><button class="btn ghost" data-action="setup">Setup</button></div>
+      <ol class="podium">${st.map((s) => `<li style="--pc:${s.color}"><b>${esc(s.name)}</b><span>${t('{cards} cards · {tokens} tokens', { cards: s.cards, tokens: s.tokens })}</span></li>`).join('')}</ol>
+      <div class="inline"><button class="btn big" data-action="again">${t('Play again')}</button><button class="btn ghost" data-action="setup">${t('Setup')}</button></div>
     </div></main>
     <section class="tl-wrap all">${game.players.map((p) => `<div class="tl-head" style="--pc:${p.color}"><b>${esc(p.name)}</b></div>${timelineHtml(p, 'view')}`).join('')}</section>
   </div>`;
@@ -720,14 +733,14 @@ function renderModal() {
   if (!m) return '';
   let body = '';
   if (m.type === 'playlists') {
-    body = `<h2>Pick a playlist</h2><p class="hint">Spotify only shares playlists you made or collaborate on. Years come from each song's album.</p>
+    body = `<h2>${t('Pick a playlist')}</h2><p class="hint">${t("Spotify only shares playlists you made or collaborate on. Years come from each song's album.")}</p>
       <div class="plist">${m.lists.map((l) => `<button class="pl" data-action="pickPlaylist" data-id="${esc(l.id)}">
         ${l.images?.[0]?.url ? `<img src="${esc(l.images[0].url)}" alt="">` : '<span class="noimg"></span>'}<b>${esc(l.name)}</b>
-        <small>${l.items?.total ?? l.tracks?.total ?? ''}</small></button>`).join('') || '<p class="empty">No playlists found.</p>'}</div>`;
+        <small>${l.items?.total ?? l.tracks?.total ?? ''}</small></button>`).join('') || `<p class="empty">${t('No playlists found.')}</p>`}</div>`;
   } else if (m.type === 'timelines') {
-    body = `<h2>Everyone's timelines</h2>${game.players.map((p) => `<div class="tl-head" style="--pc:${p.color}"><b>${esc(p.name)}</b> ${coins(p.tokens, 0)}</div>${timelineHtml(p, 'view')}`).join('')}`;
+    body = `<h2>${t("Everyone's timelines")}</h2>${game.players.map((p) => `<div class="tl-head" style="--pc:${p.color}"><b>${esc(p.name)}</b> ${coins(p.tokens, 0)}</div>${timelineHtml(p, 'view')}`).join('')}`;
   } else if (m.type === 'link') {
-    body = `<h2>Setup link</h2><p class="hint">Copy this link:</p><textarea readonly>${esc(m.url)}</textarea>`;
+    body = `<h2>${t('Setup link')}</h2><p class="hint">${t('Copy this link:')}</p><textarea readonly>${esc(m.url)}</textarea>`;
   }
   return `<div class="modal-bg" data-action="closeModal"><div class="modal" data-stop>${body}<button class="icon close" data-action="closeModal">✕</button></div></div>`;
 }
@@ -744,17 +757,17 @@ $app.addEventListener('click', async (e) => {
   switch (a) {
     case 'saveClient': {
       const v = $app.querySelector('#clientId').value.trim();
-      if (!/^[0-9a-f]{32}$/i.test(v)) { toast('That does not look like a Client ID (32 letters and digits).'); return; }
+      if (!/^[0-9a-f]{32}$/i.test(v)) { toast(t('That does not look like a Client ID (32 letters and digits).')); return; }
       store.set('nd.clientId', v);
       makeSpotify();
       render();
       return;
     }
-    case 'forgetClient': store.set('nd.clientId', ''); localStorage.removeItem('nd.spotify.token'); makeSpotify(); if (config.spotifyClientId) toast('Using the site\'s default app key.'); render(); return;
+    case 'forgetClient': store.set('nd.clientId', ''); localStorage.removeItem('nd.spotify.token'); makeSpotify(); if (config.spotifyClientId) toast(t("Using the site's default app key.")); render(); return;
     case 'login': return sp.login();
     case 'logout': sp.logout(); ui.me = null; render(); return;
     case 'devices': return refreshDevices();
-    case 'copy': navigator.clipboard?.writeText(el.dataset.text).then(() => toast('Copied')); return;
+    case 'copy': navigator.clipboard?.writeText(el.dataset.text).then(() => toast(t('Copied'))); return;
     case 'addPlayer': return addPlayer();
     case 'removePlayer':
       setup.players = setup.players.filter((p) => p.id !== id);
@@ -768,11 +781,11 @@ $app.addEventListener('click', async (e) => {
     }
     case 'era': {
       const d = G.formativeDecades(player.born);
-      if (!d.length) { toast(`Type ${player.name || 'their'} birth year first.`); return; }
+      if (!d.length) { toast(t('Type {name} birth year first.', { name: player.name || t('their') })); return; }
       Object.assign(ui.builder, { decades: d, owner: player.id });
       render();
       $app.querySelector('.builder')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      toast(`Years set to when ${player.name || 'they'} grew up. Pick genres and press Add.`);
+      toast(t('Years set to when {name} grew up. Pick genres and press Add.', { name: player.name || t('they') }));
       return;
     }
     case 'genre': {
@@ -807,7 +820,7 @@ $app.addEventListener('click', async (e) => {
     }
     case 'share': return copySetupLink();
     case 'start':
-      if (game && game.phase !== 'over' && !confirm('Start over? The current game will be lost.')) return;
+      if (game && game.phase !== 'over' && !confirm(t('Start over? The current game will be lost.'))) return;
       return startGame();
     case 'resume': ui.view = 'game'; render(); return;
     case 'setup': ui.view = 'setup'; refreshDevices(); render(); return;
@@ -843,13 +856,14 @@ $app.addEventListener('click', async (e) => {
     case 'undo': undo(); return;
     case 'timelines': ui.modal = { type: 'timelines' }; render(); return;
     case 'closeModal': ui.modal = null; render(); return;
+    case 'lang': setLang(lang === 'sv' ? 'en' : 'sv'); document.title = t(TITLE); render(); return;
     default:
   }
 });
 
 $app.addEventListener('change', (e) => {
   const el = e.target;
-  if (el.dataset.action === 'device') { setup.device = el.value; saveSetup(); if (el.value !== 'browser') toast('Songs will play on that Spotify app. Keep its screen out of sight.'); return; }
+  if (el.dataset.action === 'device') { setup.device = el.value; saveSetup(); if (el.value !== 'browser') toast(t('Songs will play on that Spotify app. Keep its screen out of sight.')); return; }
   if (el.dataset.setting) {
     const k = el.dataset.setting;
     setup.settings[k] = el.type === 'number' ? Math.max(+el.min || 0, Math.min(+el.max || 99, parseInt(el.value, 10) || 0)) : el.value;
@@ -859,7 +873,7 @@ $app.addEventListener('change', (e) => {
 
 $app.addEventListener('input', (e) => {
   const el = e.target;
-  if (el.dataset.field === 'other') { ui.builder.other = el.value; const btn = $app.querySelector('[data-action="addPack"]'); if (btn) btn.textContent = `Add ${G.packLabel({ src: el.value.trim() ? 'spotify' : 'lib', genre: el.value.trim(), genres: ui.builder.genres, decades: ui.builder.decades })}`; const on = G.packGenreIds({ genres: ui.builder.genres }); $app.querySelectorAll('.chips .chip[data-action="genre"]').forEach((c) => c.classList.toggle('on', !el.value.trim() && on.includes(c.dataset.id))); return; }
+  if (el.dataset.field === 'other') { ui.builder.other = el.value; const btn = $app.querySelector('[data-action="addPack"]'); if (btn) btn.textContent = t('Add {pack}', { pack: packName({ src: el.value.trim() ? 'spotify' : 'lib', genre: el.value.trim(), genres: ui.builder.genres, decades: ui.builder.decades }) }); const on = G.packGenreIds({ genres: ui.builder.genres }); $app.querySelectorAll('.chips .chip[data-action="genre"]').forEach((c) => c.classList.toggle('on', !el.value.trim() && on.includes(c.dataset.id))); return; }
   const p = el.dataset.id && setup.players.find((x) => x.id === el.dataset.id);
   if (p && el.dataset.field === 'name') { p.name = el.value; saveSetup(); }
   if (p && el.dataset.field === 'born') { p.born = el.value.replace(/\D/g, ''); saveSetup(); }
@@ -898,6 +912,9 @@ document.addEventListener('keydown', (e) => {
 // ---------- boot ----------
 
 async function boot() {
+  document.title = t(TITLE);
+  const loading = $app.querySelector('.busy p');
+  if (loading) loading.textContent = t('Loading…');
   try { config = { ...config, ...(await (await fetch('/config.json', { cache: 'no-store' })).json()) }; } catch { /* static hosting */ }
   library = G.parseLibrary(await (await fetch('songs.txt')).text());
 
@@ -908,8 +925,8 @@ async function boot() {
       setup = { ...setup, players: shared.players, packs: shared.packs.map((p) => ({ ...p, songs: p.songs || [] })), settings: { ...G.DEFAULT_SETTINGS, ...shared.settings } };
       saveSetup();
       ui.view = 'setup';
-      setTimeout(() => toast('Setup loaded from the link.' + (setup.packs.some((p) => p.src === 'spotify') ? ' Press ↻ on Spotify search packs to fetch their songs.' : '')), 50);
-    } catch { setTimeout(() => toast('That setup link is broken.'), 50); }
+      setTimeout(() => toast(t('Setup loaded from the link.') + (setup.packs.some((p) => p.src === 'spotify') ? t(' Press ↻ on Spotify search packs to fetch their songs.') : '')), 50);
+    } catch { setTimeout(() => toast(t('That setup link is broken.')), 50); }
     history.replaceState(null, '', location.pathname);
   }
 
