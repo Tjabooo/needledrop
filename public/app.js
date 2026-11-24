@@ -140,6 +140,7 @@ async function playCard(card) {
   if (!dev) { toast(setup.device === 'browser' ? 'The browser player is still starting. Press play in a moment.' : 'Pick a Spotify device in setup.'); return; }
   try {
     await sp.play(dev, card.uri, startPosition(card));
+    ui.started = card.k; // only once this song really started: a failed start must not "resume" the last Spotify song
     ui.playing = true;
   } catch (e) { toast(explain(e)); }
   render();
@@ -152,8 +153,8 @@ async function togglePlay() {
   const dev = deviceId();
   try {
     if (ui.playing) { await sp.pause(dev); ui.playing = false; }
-    else if (ui.started === card.k) { await sp.resume(dev); ui.playing = true; }
-    else { ui.started = card.k; await playCard(card); }
+    else if (ui.started === card.k) { await (sp.resumeTrack ? sp.resumeTrack(dev, card.uri) : sp.resume(dev)); ui.playing = true; }
+    else { await playCard(card); }
   } catch (e) { toast(explain(e)); }
   render();
 }
@@ -162,8 +163,7 @@ async function replay() {
   const card = game?.turn?.card;
   if (!card) return;
   sp.activate();
-  ui.started = card.k;
-  try { await sp.play(deviceId(), card.uri, 0); ui.playing = true; } catch (e) { toast(explain(e)); }
+  try { await sp.play(deviceId(), card.uri, 0); ui.started = card.k; ui.playing = true; } catch (e) { toast(explain(e)); }
   render();
 }
 

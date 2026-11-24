@@ -200,9 +200,42 @@ export class Spotify {
     try { this.player?.activateElement?.(); } catch { /* older SDK */ }
   }
 
+  // The track Spotify is on right now (null when nothing is active). Relinked tracks keep the asked-for uri in linked_from.
+  async nowPlaying() {
+    const data = await this.api('/me/player', { query: { additional_types: 'track' } });
+    const item = data?.item;
+    if (!item) return null;
+    return { uris: [item.uri, item.linked_from?.uri].filter(Boolean), device: data.device?.id || null, progress: data.progress_ms || 0 };
+  }
+
+  // Plays exactly this track. Spotify sometimes ignores the uri and carries on with whatever the account played last
+  // (seen when the player was not the active device yet), so check what it actually plays and force it once more if wrong.
   async play(deviceId, uri, positionMs = 0) {
-    await this.api('/me/player/play', { method: 'PUT', query: { device_id: deviceId }, body: { uris: [uri], position_ms: positionMs } });
+    const put = () => this.api('/me/player/play', { method: 'PUT', query: { device_id: deviceId }, body: { uris: [uri], position_ms: positionMs } });
+    await put();
     this.paused = false;
+    if (String(uri).startsWith('demo:')) return;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      let now = null;
+      for (let i = 0; i < 6; i++) {
+        await new Promise((r) => setTimeout(r, 400));
+        try { now = await this.nowPlaying(); } catch { now = null; }
+        if (now?.uris.includes(uri)) return;
+      }
+      if (deviceId) {
+        try { await this.api('/me/player', { method: 'PUT', body: { device_ids: [deviceId], play: false } }); } catch { /* play below reports */ }
+        await new Promise((r) => setTimeout(r, 600));
+      }
+      await put();
+    }
+  }
+
+  // Continue the card's song; if Spotify has moved on to another track (or never started this one), start it again.
+  async resumeTrack(deviceId, uri, positionMs = 0) {
+    let now = null;
+    try { now = await this.nowPlaying(); } catch { now = null; }
+    if (now && now.uris.includes(uri) && (!deviceId || !now.device || now.device === deviceId)) return this.resume(deviceId);
+    return this.play(deviceId, uri, now?.uris.includes(uri) ? now.progress : positionMs);
   }
 
   async pause(deviceId) {
