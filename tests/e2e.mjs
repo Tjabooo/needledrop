@@ -137,6 +137,13 @@ try {
   // reload keeps the game
   await cdp('Page.reload');
   check('game survives a reload', await until(`!!document.querySelector('.game') && document.querySelectorAll('.score').length === 3`));
+  // language switch: Swedish and back
+  const was = await ev(`document.documentElement.lang`);
+  await click('[data-action="lang"]');
+  check('language switch flips the UI', await until(`document.documentElement.lang !== ${JSON.stringify(was)} && document.body.innerText.includes(${JSON.stringify(was === 'sv' ? 'timeline' : 'tidslinje')})`));
+  await shot('language.png');
+  await click('[data-action="lang"]');
+  check('language switch goes back', await until(`document.documentElement.lang === ${JSON.stringify(was)}`));
   check('no page errors', errors.length === 0, errors.join(' | ').slice(0, 300));
 } catch (e) {
   check('run', false, e.stack);
