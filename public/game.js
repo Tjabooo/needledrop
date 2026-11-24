@@ -311,10 +311,20 @@ function checkWinner(g) {
   if (w) g.winner = w.id;
 }
 
+// Right spot AND named artist + title (not bought): the same player goes again.
+export function goesAgain(g) {
+  const t = g.turn;
+  return !!(g.settings.nameBonus && t && t.result && t.result.correct && !t.result.bought && t.named);
+}
+
 export function nextTurn(g) {
   if (g.winner) { g.phase = 'over'; g.turn = null; return; }
-  g.current = (g.current + 1) % g.players.length;
-  if (g.current === 0) g.round += 1;
+  if (goesAgain(g)) {
+    g.log.push({ type: 'again', player: activePlayer(g).id });
+  } else {
+    g.current = (g.current + 1) % g.players.length;
+    if (g.current === 0) g.round += 1;
+  }
   g.turn = null;
   g.phase = 'draw';
 }

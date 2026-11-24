@@ -470,6 +470,7 @@ function renderSetup() {
       <button class="swatch" data-action="color" data-id="${p.id}" title="${t('Change colour')}"></button>
       <input data-field="name" data-id="${p.id}" value="${esc(p.name)}" placeholder="${t('Player {n}', { n: i + 1 })}" maxlength="18">
       <input data-field="born" data-id="${p.id}" value="${esc(p.born)}" placeholder="${t('Born')}" inputmode="numeric" maxlength="4" class="born">
+      <span class="order"><button class="icon" data-action="moveUp" data-id="${p.id}" title="${t('Move up')}" ${i ? '' : 'disabled'}>▲</button><button class="icon" data-action="moveDown" data-id="${p.id}" title="${t('Move down')}" ${i < setup.players.length - 1 ? '' : 'disabled'}>▼</button></span>
       <button class="btn ghost small" data-action="era" data-id="${p.id}" title="${t('Pick songs from the years they grew up')}">${t('Their era')}</button>
       <button class="icon" data-action="removePlayer" data-id="${p.id}" title="${t('Remove')}">✕</button>
     </div>`).join('');
@@ -505,7 +506,7 @@ function renderSetup() {
         ${spotifyPanel()}
         <section class="panel">
           <h2>${t('Players')}</h2>
-          ${players || `<p class="empty">${t("Add everyone who plays. Birth years are optional: they help pick songs from each person's era.")}</p>`}
+          ${players ? `<p class="hint">${t('The top player starts. Use ▲ ▼ to change the order.')}</p>${players}` : `<p class="empty">${t("Add everyone who plays. Birth years are optional: they help pick songs from each person's era.")}</p>`}
           <div class="inline"><button class="btn ghost" data-action="addPlayer">${t('+ Add player')}</button></div>
         </section>
         <section class="panel rules">
@@ -513,7 +514,7 @@ function renderSetup() {
           <label class="field row switch-row"><span><b>${t('Cards to win')}</b><small>${t('First to this many cards on their timeline wins.')}</small></span><input type="number" min="3" max="30" data-setting="target" value="${s.target}"></label>
           <label class="field row switch-row"><span><b>${t('Starting tokens')}</b><small>${t('Coins everyone starts with. Spend 1 to skip a song or challenge, 3 to buy a card. Name artist + title to earn more (max 5).')}</small></span><input type="number" min="0" max="5" data-setting="startTokens" value="${s.startTokens}"></label>
           ${switchRow('challenges', 'Challenges', 'Others can spend a token to bet on a different spot and steal the card.')}
-          ${switchRow('nameBonus', 'Name it for a token', 'Say the artist and title out loud: +1 token if you get both.')}
+          ${switchRow('nameBonus', 'Name it for a token', 'Say the artist and title out loud: +1 token if you get both, and another turn if the card is in the right spot too.')}
           ${switchRow('ownTaste', 'Everyone gets their own music', 'Songs for each player come from their own packs (plus "Everyone" packs).')}
           ${switchRow('noExtreme', 'Leave out extreme metal', 'Skips death, black and similar metal.', s.exclude.includes('extreme'))}
           <label class="field row">${t('Songs start')} <select data-setting="startAt">
@@ -680,7 +681,7 @@ function renderGame() {
     else if (r.correct) verdict = `<span class="good">${tr('Right! {name} keeps the card.', { name: esc(p.name) })}</span>`;
     else if (winner) verdict = `<span class="steal" style="--pc:${winner.color}">${tr('Wrong spot. {name} steals it!', { name: esc(winner.name) })}</span>`;
     else verdict = `<span class="bad">${tr('Wrong spot. The card is out.')}</span>`;
-    const next = game.winner ? tr('See who won') : tr('Next: {name}', { name: esc(game.players[(game.current + 1) % game.players.length].name) });
+    const next = game.winner ? tr('See who won') : G.goesAgain(game) ? tr('{name} goes again', { name: esc(p.name) }) : tr('Next: {name}', { name: esc(game.players[(game.current + 1) % game.players.length].name) });
     stage = `<div class="stage-split">
       ${vinyl(p, true)}
       <div class="stage-side reveal">
@@ -691,7 +692,7 @@ function renderGame() {
         </div>
         <p class="verdict">${verdict}</p>
         ${game.settings.nameBonus && !r.bought ? `<button class="named ${t.named ? 'on' : ''}" data-action="named">
-          <span class="box">${t.named ? '✓' : ''}</span><span>${tr('{name} named the artist <i>and</i> the title', { name: esc(p.name) })}</span><span class="cost">+1</span></button>` : ''}
+          <span class="box">${t.named ? '✓' : ''}</span><span>${tr('{name} named the artist <i>and</i> the title', { name: esc(p.name) })}${r.correct ? `<small>${tr('Right spot too: another turn')}</small>` : ''}</span><span class="cost">+1</span></button>` : ''}
         <div class="inline"><button class="btn big" data-action="next">${next} →</button>
         <button class="btn ghost" data-action="play">${tr(ui.playing ? '❚❚ Pause' : '▶ Keep listening')}</button></div>
       </div>
@@ -774,6 +775,14 @@ $app.addEventListener('click', async (e) => {
       setup.packs.forEach((p) => { if (p.owner === id) p.owner = 'all'; });
       if (ui.builder.owner === id) ui.builder.owner = 'all';
       saveSetup(); render(); return;
+    case 'moveUp':
+    case 'moveDown': {
+      const i = setup.players.indexOf(player);
+      const j = a === 'moveUp' ? i - 1 : i + 1;
+      if (i < 0 || j < 0 || j >= setup.players.length) return;
+      [setup.players[i], setup.players[j]] = [setup.players[j], setup.players[i]];
+      saveSetup(); render(); return;
+    }
     case 'color': {
       const i = G.COLORS.indexOf(player.color);
       player.color = G.COLORS[(i + 1) % G.COLORS.length];

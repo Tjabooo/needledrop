@@ -165,3 +165,25 @@ test('formative decades from a birth year', () => {
   assert.deepEqual(G.formativeDecades(1969), [1970, 1980, 1990]);
   assert.deepEqual(G.formativeDecades(2006), [2010, 2020]);
 });
+
+test('right spot + named artist and title: same player goes again', () => {
+  const g = G.newGame({ players: [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }], settings: { challenges: false } });
+  G.dealStarter(g, 0, { k: 's1', y: 1990, a: 'x', t: 'x' });
+  G.dealStarter(g, 1, { k: 's2', y: 1990, a: 'y', t: 'y' });
+  g.phase = 'draw';
+  G.startTurn(g, { k: 'c1', y: 2000, a: 'z', t: 'z' });
+  G.chooseSlot(g, 1);
+  G.lockIn(g);
+  assert.equal(g.turn.result.correct, true);
+  G.setNamed(g, true);
+  assert.equal(G.goesAgain(g), true);
+  G.nextTurn(g);
+  assert.equal(g.current, 0);
+  // right spot without naming passes the turn on
+  G.startTurn(g, { k: 'c2', y: 2010, a: 'w', t: 'w' });
+  G.chooseSlot(g, 2);
+  G.lockIn(g);
+  assert.equal(G.goesAgain(g), false);
+  G.nextTurn(g);
+  assert.equal(g.current, 1);
+});
