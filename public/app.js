@@ -545,7 +545,7 @@ function roomState() {
   const s = setup.settings;
   return {
     players: setup.players.map(({ id, name, color, remote: r }) => ({ id, name, color, remote: r || null })),
-    settings: { target: s.target, startTokens: s.startTokens, challenges: s.challenges, nameBonus: s.nameBonus },
+    settings: { target: s.target, startTokens: s.startTokens, challenges: s.challenges, nameBonus: s.nameBonus, equalTurns: s.equalTurns },
     packs: setup.packs.filter((p) => !p.off).map(({ songs, ...p }) => p),
     game: g, playing: !!ui.playing, busy: !!(ui.busy && game), lang,
   };
@@ -934,6 +934,7 @@ function renderSetup() {
           <h2>${t('Rules')}</h2>
           <label class="field row switch-row"><span><b>${t('Cards to win')}</b><small>${t('First to this many cards on their timeline wins.')}</small></span><input type="number" min="3" max="30" data-setting="target" value="${s.target}"></label>
           <label class="field row switch-row"><span><b>${t('Starting tokens')}</b><small>${t('Coins everyone starts with. Spend 1 to skip a song or challenge, 3 to buy a card. Name artist + title to earn more (max 5).')}</small></span><input type="number" min="0" max="5" data-setting="startTokens" value="${s.startTokens}"></label>
+          ${switchRow('equalTurns', 'Equal turns', 'When someone reaches the target, the players after them in the order still get their turn. Most cards wins (tie: most tokens).')}
           ${switchRow('challenges', 'Challenges', 'Others can spend a token to bet on a different spot and steal the card.')}
           ${switchRow('nameBonus', 'Name it for a token', 'Say the artist and title out loud: +1 token if you get both, and another turn if the card is in the right spot too.')}
           ${switchRow('ownTaste', 'Everyone gets their own music', 'Songs for each player come from their own packs (plus "Everyone" packs).')}
@@ -1075,6 +1076,7 @@ function renderGame() {
     stage = `<div class="stage-center">
       <p class="eyebrow" style="--pc:${p.color}">${tr('Up next')}</p>
       <h1 class="who" style="--pc:${p.color}">${esc(p.name)}</h1>
+      ${lastRoundNote()}
       ${mine ? `<button class="btn big" data-action="draw">${guest ? tr('Play my song') : tr('Play {poss} song', { poss: esc(poss(p.name)) })}</button>`
         : waiting(tr('Waiting for {name} to start their song…', { name: esc(p.name) }))}
     </div>`;
@@ -1223,9 +1225,16 @@ function renderGame() {
   </div>`;
 }
 
+function lastRoundNote() {
+  const by = G.finalRoundBy(game);
+  if (!by) return '';
+  return `<p class="last-round" style="--pc:${by.color}"><b>${tr('Last round')}</b> ${tr('{name} has {n} cards. Everyone gets as many turns before the game ends.', { name: esc(by.name), n: by.timeline.length })}</p>`;
+}
+
 function renderOver() {
   const st = G.standings(game);
   const w = game.players.find((p) => p.id === game.winner) || game.players.find((p) => p.id === st[0].id);
+  const tied = (game.winners || []).map((id) => game.players.find((p) => p.id === id)).filter(Boolean);
   const guest = role === 'guest';
   const buttons = guest ? `<p class="waiting">${t('Waiting for the host to start a new game…')}</p>`
     : `<div class="inline"><button class="btn big" data-action="again">${t('Play again')}</button><button class="btn ghost" data-action="setup">${t('Setup')}</button></div>`;
@@ -1234,8 +1243,10 @@ function renderOver() {
     <header class="gtop">${logo(true)}<div class="scores">${scoreboard()}</div>${menu}</header>
     ${hostBanner()}
     <main class="stage"><div class="stage-center">
-      <p class="eyebrow" style="--pc:${w.color}">${t('Winner')}</p>
-      <h1 class="who" style="--pc:${w.color}">${esc(w.name)}</h1>
+      ${tied.length > 1 ? `<p class="eyebrow" style="--pc:${w.color}">${t("It's a tie")}</p>
+      <h1 class="who tie">${tied.map((p) => `<span style="color:${p.color}">${esc(p.name)}</span>`).join(' & ')}</h1>`
+      : `<p class="eyebrow" style="--pc:${w.color}">${t('Winner')}</p>
+      <h1 class="who" style="--pc:${w.color}">${esc(w.name)}</h1>`}
       <ol class="podium">${st.map((s) => `<li style="--pc:${s.color}"><b>${esc(s.name)}</b><span>${t('{cards} cards · {tokens} tokens', { cards: s.cards, tokens: s.tokens })}</span></li>`).join('')}</ol>
       ${buttons}
     </div></main>

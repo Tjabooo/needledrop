@@ -116,7 +116,7 @@ test('naming bonus respects the cap and can be undone', () => {
 });
 
 test('skip and buy cost tokens; reaching the target ends the game', () => {
-  const g = game(['A', 'B'], { target: 2, challenges: false });
+  const g = game(['A', 'B'], { target: 2, challenges: false, equalTurns: false });
   G.startTurn(g, { k: 'c', y: 1950 });
   assert.ok(G.skip(g, { k: 'd', y: 1960 }));
   assert.equal(g.players[0].tokens, 1);
@@ -211,4 +211,57 @@ test('challenge decisions: everyone with a token must say yes or no', () => {
   G.addChallenge(g, 'b', 1);
   g.players[2].tokens = 1;
   assert.deepEqual(G.pendingChallengers(g), []);
+});
+
+test('equal turns: reaching the target lets the rest of the round play', () => {
+  const g = game(['A', 'B', 'C'], { target: 2, challenges: false });
+  g.players[0].timeline = [{ k: 'a0', y: 1980 }];
+  g.players[1].timeline = [{ k: 'b0', y: 1980 }];
+  G.startTurn(g, { k: 'c1', y: 1990 });
+  G.chooseSlot(g, 1); G.lockIn(g);
+  G.setNamed(g, true);
+  assert.equal(g.winner, null, 'A reached the target but B and C still play');
+  assert.ok(g.finalRound);
+  assert.equal(G.finalRoundBy(g).id, 'A');
+  assert.ok(!G.goesAgain(g), 'no extra turn once at the target');
+  G.nextTurn(g);
+  assert.equal(g.phase, 'draw');
+  assert.equal(G.activePlayer(g).id, 'B');
+  G.startTurn(g, { k: 'c2', y: 1990 });
+  G.chooseSlot(g, 1); G.lockIn(g);
+  assert.equal(g.winner, null);
+  G.nextTurn(g);
+  assert.equal(G.activePlayer(g).id, 'C');
+  g.players[0].tokens = 2; g.players[1].tokens = 4; // A and B tie on cards: B has more tokens
+  G.startTurn(g, { k: 'c3', y: 2005 });
+  G.chooseSlot(g, 0); G.lockIn(g); // C misses
+  assert.equal(g.turn.result.correct, false);
+  assert.deepEqual(g.winners, ['B']);
+  assert.equal(g.winner, 'B');
+  G.nextTurn(g);
+  assert.equal(g.phase, 'over');
+});
+
+test('equal turns: a catching-up last player who names it goes again; last seat reaching ends it', () => {
+  const g = game(['A', 'B'], { target: 2, challenges: false });
+  g.players[0].timeline = [{ k: 'a0', y: 1980 }, { k: 'a1', y: 1990 }];
+  g.players[1].timeline = [];
+  g.finalRound = true;
+  g.current = 1;
+  G.startTurn(g, { k: 'b1', y: 1990 });
+  G.chooseSlot(g, 0); G.lockIn(g);
+  G.setNamed(g, true);
+  assert.equal(g.players[1].timeline.length, 1);
+  assert.ok(G.goesAgain(g));
+  assert.equal(g.winner, null);
+  G.nextTurn(g);
+  assert.equal(G.activePlayer(g).id, 'B');
+  G.startTurn(g, { k: 'b2', y: 2000 });
+  G.chooseSlot(g, 1); G.lockIn(g);
+  G.setNamed(g, true);
+  assert.equal(g.players[1].timeline.length, 2);
+  assert.ok(!G.goesAgain(g));
+  assert.equal(g.winners.length, g.players[0].tokens === g.players[1].tokens ? 2 : 1, 'same cards + same tokens = shared win');
+  G.nextTurn(g);
+  assert.equal(g.phase, 'over');
 });

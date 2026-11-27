@@ -25,6 +25,7 @@ export const DEFAULT_SETTINGS = {
   maxTokens: 5,
   challenges: true,
   nameBonus: true,
+  equalTurns: true, // when someone reaches the target, the rest of the round still plays so everyone gets as many turns
   ownTaste: false, // each player's songs come from their own packs (plus "everyone" packs)
   exclude: ['extreme'], // library tags never dealt
   startAt: 'start', // start | 30 | random
@@ -325,21 +326,46 @@ export function setNamed(g, named) {
     g.turn.named = false;
     g.turn.namedPaid = false;
   }
+  checkWinner(g); // naming can earn another turn, which keeps a finished last round going
 }
 
 function checkWinner(g) {
-  const w = g.players.find((p) => p.timeline.length >= g.settings.target);
-  if (w) g.winner = w.id;
+  const target = g.settings.target;
+  const reached = g.players.filter((p) => p.timeline.length >= target);
+  g.winner = null;
+  g.winners = null;
+  if (!reached.length) { g.finalRound = false; return; }
+  if (!g.settings.equalTurns) { g.winner = reached[0].id; g.winners = [g.winner]; return; }
+  // Last round: the players after the active one (in turn order) still get their turn,
+  // so the game ends once the last seat has played.
+  g.finalRound = true;
+  if (g.current === g.players.length - 1 && !goesAgain(g)) {
+    const best = Math.max(...g.players.map((p) => p.timeline.length));
+    let top = g.players.filter((p) => p.timeline.length === best);
+    const rich = Math.max(...top.map((p) => p.tokens));
+    top = top.filter((p) => p.tokens === rich); // tie on cards: most tokens left wins; still tied = shared win
+    g.winners = top.map((p) => p.id);
+    g.winner = g.winners[0];
+  }
+}
+
+// Who reached the target first and started the last round (equal-turns games).
+export function finalRoundBy(g) {
+  if (!g.finalRound) return null;
+  return g.players.find((p) => p.timeline.length >= g.settings.target) || null;
 }
 
 // Right spot AND named artist + title (not bought): the same player goes again.
+// In the last round nobody already at the target gets an extra turn.
 export function goesAgain(g) {
   const t = g.turn;
+  if (g.finalRound && activePlayer(g).timeline.length >= g.settings.target) return false;
   return !!(g.settings.nameBonus && t && t.result && t.result.correct && !t.result.bought && t.named);
 }
 
 export function nextTurn(g) {
   if (g.winner) { g.phase = 'over'; g.turn = null; return; }
+  if (g.finalRound && g.current === g.players.length - 1 && !goesAgain(g)) { checkWinner(g); g.phase = 'over'; g.turn = null; return; }
   if (goesAgain(g)) {
     g.log.push({ type: 'again', player: activePlayer(g).id });
   } else {
