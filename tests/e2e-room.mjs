@@ -76,6 +76,7 @@ try {
   await host.click('[data-action="openRoom"]');
   check('room opens with a QR code', await host.until(`!!document.querySelector('.modal .qr svg') && !!JSON.parse(localStorage.getItem('nd.room'))?.code`));
   const code = await host.ev(`JSON.parse(localStorage.getItem('nd.room')).code`);
+  check('room link carries the host language', await host.until(`/\\?l=en$/.test(document.querySelector('.room-box .copy')?.dataset.text || '')`));
   await host.shot('room-modal.png');
   await host.click('.modal .close');
 
@@ -148,6 +149,18 @@ try {
   // a phone that reloads gets its seat back
   await phone.cdp('Page.reload');
   check('phone reload keeps the seat', await phone.until(`!!document.querySelector('.game.is-guest') && !!document.querySelector('.score.me')`));
+
+  // language: a phone follows the host screen until its owner picks one on the phone
+  await host.click('[data-action="lang"]');
+  check('phone follows the host language', await phone.until(`document.documentElement.lang === 'sv' && document.body.innerText.includes('Tidslinjer')`));
+  await phone.click('[data-action="lang"]');
+  check('phone can pick its own language', await phone.until(`document.documentElement.lang === 'en'`));
+  await host.click('[data-action="lang"]');
+  await host.click('[data-action="lang"]');
+  await host.until(`document.documentElement.lang === 'sv'`);
+  await new Promise((r) => setTimeout(r, 800));
+  check('phone keeps its own pick after that', await phone.ev(`document.documentElement.lang === 'en'`));
+  await host.click('[data-action="lang"]');
 
   // leaving: the host drops the player from setup (the running game keeps them)
   await phone.ev(`window.confirm = () => true`);

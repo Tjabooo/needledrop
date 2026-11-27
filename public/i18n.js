@@ -18,6 +18,22 @@ export function setLang(l) {
   document.documentElement.lang = lang;
 }
 
+// Someone pressed SV/EN on this device: from then on their choice wins over the host's language.
+const PICKED = 'nd.langPicked';
+export function pickLang(l) {
+  setLang(l);
+  try { localStorage.setItem(PICKED, '1'); } catch { /* storage blocked */ }
+}
+
+// A phone in a room starts in the host screen's language, unless its owner picked one here before.
+export function followLang(l) {
+  let picked = false;
+  try { picked = !!localStorage.getItem(PICKED); } catch { /* storage blocked */ }
+  if (picked || !LANGS.includes(l) || l === lang) return false;
+  setLang(l);
+  return true;
+}
+
 export function t(s, vars) {
   let out = (lang === 'sv' && SV[s]) || s;
   if (vars) out = out.replace(/\{(\w+)\}/g, (m, k) => (vars[k] ?? m));

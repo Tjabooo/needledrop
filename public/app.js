@@ -1,6 +1,6 @@
 import * as G from './game.js';
 import { Spotify } from './spotify.js';
-import { t, lang, setLang, poss, decade } from './i18n.js';
+import { t, lang, pickLang, followLang, poss, decade } from './i18n.js';
 import { qrSvg } from './qr.js';
 import { RoomLink, createRoom, joinRoom } from './room.js';
 
@@ -412,7 +412,7 @@ async function copySetupLink() {
 
 // ---------- rooms: host ----------
 
-const roomUrl = (code) => `${location.origin}/${code}`;
+const roomUrl = (code) => `${location.origin}/${code}?l=${lang}`; // ?l: phones start in this screen's language
 const saveRoom = () => store.set('nd.room', hostRoom);
 
 async function openRoom() {
@@ -547,7 +547,7 @@ function roomState() {
     players: setup.players.map(({ id, name, color, remote: r }) => ({ id, name, color, remote: r || null })),
     settings: { target: s.target, startTokens: s.startTokens, challenges: s.challenges, nameBonus: s.nameBonus },
     packs: setup.packs.filter((p) => !p.off).map(({ songs, ...p }) => p),
-    game: g, playing: !!ui.playing, busy: !!(ui.busy && game),
+    game: g, playing: !!ui.playing, busy: !!(ui.busy && game), lang,
   };
 }
 
@@ -655,6 +655,7 @@ function onGuestEvent(ev) {
       const before = remote?.game;
       remote = ev.state || null;
       game = remote?.game || null;
+      if (followLang(remote?.lang)) document.title = t(TITLE);
       ui.playing = !!remote?.playing;
       if (game?.phase !== 'challenge') ui.challenger = null;
       // Buzz when it becomes this phone's turn.
@@ -1433,7 +1434,7 @@ $app.addEventListener('click', async (e) => {
     case 'undo': undo(); return;
     case 'timelines': ui.modal = { type: 'timelines' }; render(); return;
     case 'closeModal': ui.modal = null; render(); return;
-    case 'lang': setLang(lang === 'sv' ? 'en' : 'sv'); document.title = t(TITLE); render(); return;
+    case 'lang': pickLang(lang === 'sv' ? 'en' : 'sv'); document.title = t(TITLE); render(); return;
     default:
   }
 });
@@ -1493,6 +1494,7 @@ document.addEventListener('keydown', (e) => {
 // ---------- boot ----------
 
 async function boot() {
+  followLang(new URLSearchParams(location.search).get('l')); // joined from a host's QR code
   document.title = t(TITLE);
   const loading = $app.querySelector('.busy p');
   if (loading) loading.textContent = t('Loading…');
