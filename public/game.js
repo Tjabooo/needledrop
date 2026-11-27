@@ -199,7 +199,7 @@ export function dealStarter(g, playerIndex, card) {
 export function startTurn(g, card) {
   g.phase = 'listen';
   g.used.push(card.k);
-  g.turn = { card, slot: null, challengers: [], named: false, result: null, bought: false };
+  g.turn = { card, slot: null, challengers: [], passed: [], named: false, result: null, bought: false };
 }
 
 export function chooseSlot(g, slot) {
@@ -217,7 +217,7 @@ export function skip(g, card) {
   if (p.tokens < 1) return false;
   p.tokens -= 1;
   g.used.push(card.k);
-  g.turn = { card, slot: null, challengers: [], named: false, result: null, bought: false };
+  g.turn = { card, slot: null, challengers: [], passed: [], named: false, result: null, bought: false };
   g.log.push({ type: 'skip', player: p.id });
   return true;
 }
@@ -256,6 +256,26 @@ export function addChallenge(g, playerId, slot) {
   p.tokens -= 1;
   g.turn.challengers.push({ player: playerId, slot });
   return true;
+}
+
+// A player who could challenge said no for this turn.
+export function passChallenge(g, playerId) {
+  if (g.phase !== 'challenge') return false;
+  const t = g.turn;
+  if (!t.passed) t.passed = [];
+  if (playerId === activePlayer(g).id || t.passed.includes(playerId) || t.challengers.some((c) => c.player === playerId)) return false;
+  t.passed.push(playerId);
+  return true;
+}
+
+// Players who can still challenge this turn and haven't said yes or no yet (room games wait for all of them).
+export function pendingChallengers(g) {
+  if (g.phase !== 'challenge' || !g.turn) return [];
+  const t = g.turn;
+  const free = activePlayer(g).timeline.length + 1 - 1 - t.challengers.length; // gaps nobody has claimed
+  if (free < 1) return [];
+  return g.players.filter((p) => p !== activePlayer(g) && p.tokens >= 1
+    && !(t.passed || []).includes(p.id) && !t.challengers.some((c) => c.player === p.id));
 }
 
 export function removeChallenge(g, playerId) {

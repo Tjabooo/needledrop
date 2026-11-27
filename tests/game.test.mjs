@@ -187,3 +187,28 @@ test('right spot + named artist and title: same player goes again', () => {
   G.nextTurn(g);
   assert.equal(g.current, 1);
 });
+
+test('challenge decisions: everyone with a token must say yes or no', () => {
+  const g = G.newGame({ players: [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }, { id: 'c', name: 'C' }], settings: { startTokens: 2 } });
+  for (let i = 0; i < 3; i++) G.dealStarter(g, i, { k: 's' + i, y: 1990, a: 'x', t: 'x' });
+  g.phase = 'draw';
+  G.startTurn(g, { k: 'c1', y: 2000, a: 'z', t: 'z' });
+  g.players[2].tokens = 0; // C can't afford a challenge, so isn't asked
+  G.chooseSlot(g, 0);
+  G.lockIn(g);
+  assert.equal(g.phase, 'challenge');
+  assert.deepEqual(G.pendingChallengers(g).map((p) => p.id), ['b']);
+  assert.equal(G.passChallenge(g, 'a'), false); // the active player never challenges
+  assert.equal(G.passChallenge(g, 'b'), true);
+  assert.deepEqual(G.pendingChallengers(g), []);
+  // a challenger who takes it back has to decide again
+  g.turn.passed = [];
+  assert.equal(G.addChallenge(g, 'b', 1), true);
+  assert.deepEqual(G.pendingChallengers(g), []);
+  G.removeChallenge(g, 'b');
+  assert.deepEqual(G.pendingChallengers(g).map((p) => p.id), ['b']);
+  // no free gap left: nobody is asked
+  G.addChallenge(g, 'b', 1);
+  g.players[2].tokens = 1;
+  assert.deepEqual(G.pendingChallengers(g), []);
+});

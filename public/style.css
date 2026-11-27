@@ -218,6 +218,16 @@ footer { margin-top: 30px; color: var(--dim); font-size: 12.5px; text-align: cen
 .chal small { color: var(--dim); font-size: 12px; }
 .chal.on { border-color: var(--pc); box-shadow: 0 0 0 1px var(--pc); }
 .chal.placed { background: color-mix(in srgb, var(--pc) 16%, var(--panel)); border-color: var(--pc); }
+.chal.deciding small { color: var(--sub); font-style: italic; }
+
+/* challenge popup (room games): no close button, answering is the only way on */
+.decide-bg { position: fixed; inset: 0; z-index: 25; background: rgba(10,8,7,.78); display: grid; place-items: center; padding: 20px; animation: decide-in .18s ease-out; }
+.modal.decide { width: min(760px, 100%); border-color: var(--pc); box-shadow: 0 0 0 1px var(--pc), 0 18px 60px rgba(0,0,0,.55); }
+.modal.decide h2 { font-size: 28px; margin-bottom: 12px; }
+.modal.decide .tl-wrap { margin: 6px 0 14px; padding: 0; }
+.modal.decide .hint { color: var(--sub); }
+.modal.decide .inline { margin-top: 16px; }
+@keyframes decide-in { from { opacity: 0; transform: translateY(10px); } }
 
 /* reveal */
 .big-card {
@@ -374,6 +384,9 @@ button.gap:hover:not(.locked) { background: rgba(255,255,255,.04); border-color:
 .rules-list .owner { font-size: 12px; }
 
 @media (max-width: 640px) {
+  .decide-bg { place-items: end stretch; padding: 0; }
+  .modal.decide { border-radius: 18px 18px 0 0; max-height: 92vh; padding: 20px 16px calc(20px + env(safe-area-inset-bottom)); }
+  .modal.decide .inline .btn { flex: 1; }
   .room-big { grid-template-columns: 1fr; justify-items: center; text-align: center; }
   .room-big .qr { width: min(300px, 80vw); }
   .is-guest .gtop { padding: 10px 12px; gap: 10px; }

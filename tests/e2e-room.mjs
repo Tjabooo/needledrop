@@ -108,13 +108,15 @@ try {
   await host.click('.gap[data-slot="0"]');
   check('phone sees the host pick live', await phone.until(`!!document.querySelector('.tl-wrap .gap.selected')`));
   await host.click('[data-action="lock"]');
-  check('phone may challenge', await phone.until(`!!document.querySelector('.chal:not([disabled])')`));
+  check('phone gets the challenge popup', await phone.until(`!!document.querySelector('.decide [data-action="chYes"]') && !!document.querySelector('.decide [data-action="chPass"]')`));
   check('phone has no reveal button on someone else\'s turn', !(await phone.ev(`!!document.querySelector('[data-action="reveal"]')`)));
-  await phone.click('.chal');
+  check('host cannot reveal while a phone decides', await host.until(`!document.querySelector('[data-action="reveal"]') && document.body.innerText.includes('to decide')`));
+  await phone.shot('phone-challenge-popup.png');
+  await phone.click('[data-action="chYes"]');
+  check('popup gives way to gap picking', await phone.until(`!document.querySelector('.decide') && !!document.querySelector('[data-action="chBack"]')`));
   await phone.click('.gap[data-slot="1"]');
-  check('phone challenge reaches the host', await host.until(`JSON.parse(localStorage.getItem('nd.game')).turn.challengers.length === 1`));
-  await phone.shot('phone-challenge.png');
-  await host.click('[data-action="reveal"]');
+  check('phone challenge reaches the host', await host.until(`(g => g.turn.challengers.length === 1 || g.phase === 'reveal')(JSON.parse(localStorage.getItem('nd.game')))`));
+  check('reveal comes once everyone answered', await host.until(`JSON.parse(localStorage.getItem('nd.game')).phase === 'reveal'`));
   check('phone sees the reveal', await phone.until(`!!document.querySelector('.big-card')`));
   check('phone waits for the host to move on', await phone.ev(`!document.querySelector('[data-action="next"]') && !!document.querySelector('.waiting')`));
   await host.click('[data-action="next"]');
@@ -122,13 +124,17 @@ try {
   // Mor's turn, played from the phone
   check('phone gets its turn', await phone.until(`!!document.querySelector('[data-action="lock"]') && document.body.innerText.toLowerCase().includes('your turn')`));
   await phone.shot('phone-turn.png');
+  check('host has no turn controls on the phone\'s turn', await host.until(`!document.querySelector('[data-action="lock"], [data-action="skip"], [data-action="buy"]') && !!document.querySelector('.waiting, .stage h1')`));
+  await host.click('.gap[data-slot="1"]'); // must be ignored: it's Mor's move
   await phone.click('.gap[data-slot="0"]');
   check('phone pick reaches the host', await host.until(`JSON.parse(localStorage.getItem('nd.game')).turn.slot === 0`));
   await phone.click('[data-action="lock"]');
   check('phone lock reaches the host', await host.until(`['challenge', 'reveal'].includes(JSON.parse(localStorage.getItem('nd.game')).phase)`));
   if ((await hostGame(host)).phase === 'challenge') {
-    check('phone can reveal its own turn', await phone.until(`!!document.querySelector('[data-action="reveal"]')`));
-    await phone.click('[data-action="reveal"]');
+    check('host table player gets the popup', await host.until(`!!document.querySelector('.decide [data-action="chPass"]')`));
+    check('phone waits for the answer, no reveal button', await phone.until(`!document.querySelector('[data-action="reveal"]') && document.body.innerText.includes('to decide')`));
+    await host.shot('host-challenge-popup.png');
+    await host.click('.decide [data-action="chPass"]');
   }
   check('phone reveal reaches the host', await host.until(`JSON.parse(localStorage.getItem('nd.game')).phase === 'reveal'`));
   await phone.until(`!!document.querySelector('[data-action="named"]')`);

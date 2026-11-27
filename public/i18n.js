@@ -321,4 +321,19 @@ const SV = {
   'Leave': 'Lämna',
   'You': 'Du',
   'you': 'du',
+  // challenge popup (room games)
+  'challenging': 'utmanar',
+  'passed': 'avstår',
+  'deciding…': 'bestämmer sig…',
+  'Pick a gap': 'Välj en lucka',
+  '{name}: tap the gap on {poss} timeline where you think the song goes.': '{name}: tryck på luckan i {poss} tidslinje där du tror att låten hör hemma.',
+  '{name} locked in': '{name} har låst',
+  'Waiting for {names} to decide…': 'Väntar på att {names} bestämmer sig…',
+  'Your call': 'Ditt beslut',
+  '{name}, your call': '{name}, ditt beslut',
+  'Challenge {poss} pick?': 'Utmana {poss} gissning?',
+  "{poss} phone isn't connected, so answer here.": '{poss} mobil är inte ansluten, så svara här.',
+  'Challenge': 'Utmana',
+  'Let it ride': 'Låt det stå',
+
 };

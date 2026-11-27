@@ -521,13 +521,14 @@ function onRemoteAct(pid, m) {
         snapshot();
         G.removeChallenge(game, p.id);
         if (!G.addChallenge(game, p.id, slot)) game = JSON.parse(undoStack.pop());
-        saveGame(); render();
+        saveGame(); render(); autoReveal();
       }
       return;
     }
     case 'unchallenge': if (game.phase === 'challenge') act(() => G.removeChallenge(game, p.id)); return;
-    case 'lock': if (active && game.phase === 'listen') act(() => G.lockIn(game)); return;
-    case 'reveal': if (active && game.phase === 'challenge') { ui.challenger = null; act(() => G.reveal(game)); } return;
+    case 'pass': if (!active && game.phase === 'challenge') { act(() => G.passChallenge(game, p.id)); autoReveal(); } return;
+    case 'lock': if (active && game.phase === 'listen') { act(() => G.lockIn(game)); autoReveal(); } return;
+    case 'reveal': if (active && game.phase === 'challenge' && !(roomGame() && G.pendingChallengers(game).length)) { ui.challenger = null; act(() => G.reveal(game)); } return;
     case 'named': if (active && game.phase === 'reveal') act(() => G.setNamed(game, !game.turn.named)); return;
     case 'next': if (active && game.phase === 'reveal') nextTurn(); return;
     default:
@@ -628,8 +629,23 @@ function myPlayerId() {
   return (remote.game?.players.find(mine) || remote.players.find(mine))?.id || null;
 }
 
-// The host can do everything; a phone only its own player's moves.
-const mayAct = (playerId) => role !== 'guest' || (!!playerId && playerId === myPlayerId());
+// Room games: whoever's move it is has the controls. A phone plays only its own player; the host screen plays the
+// players at the table, plus anyone whose phone isn't connected right now (so a dead phone never stalls the game).
+const roomGame = () => !!game?.players.some((p) => p.remote);
+const hostMayPlay = (p) => !!p && (!p.remote || !room.online.includes(p.remote));
+const mayAct = (playerId) => role === 'guest'
+  ? !!playerId && playerId === myPlayerId()
+  : !game || hostMayPlay(game.players.find((x) => x.id === playerId));
+
+// Room games wait until everyone who could challenge has said yes or no, then reveal on their own.
+function autoReveal() {
+  if (role === 'guest' || !game || game.phase !== 'challenge' || !roomGame()) return;
+  if (G.pendingChallengers(game).length) return;
+  ui.challenger = null;
+  G.reveal(game);
+  saveGame();
+  render();
+}
 
 function onGuestEvent(ev) {
   switch (ev.type) {
@@ -646,6 +662,9 @@ function onGuestEvent(ev) {
       const mineNow = game && me && G.activePlayer(game)?.id === me && (game.phase === 'listen' || game.phase === 'draw');
       const mineBefore = before && me && before.players[before.current]?.id === me && (before.phase === 'listen' || before.phase === 'draw') && before.round === game?.round;
       if (mineNow && !mineBefore) navigator.vibrate?.([120, 60, 120]);
+      const askNow = game && me && G.pendingChallengers(game).some((x) => x.id === me);
+      const askBefore = before && me && before.phase === 'challenge' && before.round === game?.round && before.current === game?.current;
+      if (askNow && !askBefore) navigator.vibrate?.([80, 40, 80, 40, 80]);
       break;
     }
     case 'kicked': endGuest(t('The host removed you from the room.')); return;
@@ -1086,6 +1105,30 @@ function renderGame() {
         <p class="lead">${tr('Their pick shows up on their timeline below.')}${game.settings.challenges && mePlayer?.tokens ? ' ' + tr('Think they are wrong? You can challenge once they lock it in.') : ''}</p>
       </div>
     </div>`;
+  } else if (game.phase === 'challenge' && roomGame()) {
+    // Room games: everyone who could challenge gets a yes/no popup, and the song is revealed once they all answered.
+    tlMode = 'challenge';
+    const pending = G.pendingChallengers(game);
+    const names = (list) => list.map((x) => `<b style="color:${x.color}">${esc(x.name)}</b>`).join(', ');
+    const picker = ui.challenger && game.players.find((x) => x.id === ui.challenger);
+    const status = game.players.filter((x) => x.id !== p.id).map((o) => {
+      const c = t.challengers.find((x) => x.player === o.id);
+      const state = c ? 'challenging' : (t.passed || []).includes(o.id) ? 'passed' : pending.includes(o) ? 'deciding…' : 'no tokens';
+      const cancel = c && mayAct(o.id) && pending.length;
+      return `<${cancel ? 'button' : 'div'} class="chal ${c ? 'placed' : ''} ${pending.includes(o) ? 'deciding' : ''}" style="--pc:${o.color}" ${cancel ? `data-action="challenger" data-id="${o.id}"` : ''}>
+        <b>${esc(o.name)}</b> ${coins(o.tokens, 0)}<small>${tr(cancel ? 'challenging · tap to cancel' : state)}</small></${cancel ? 'button' : 'div'}>`;
+    }).join('');
+    stage = `<div class="stage-split">
+      ${vinyl(p, false)}
+      <div class="stage-side">
+        <p class="eyebrow" style="--pc:${p.color}">${tr('Challenge?')}</p>
+        ${picker ? `<h1>${tr('Pick a gap')}</h1><p class="lead">${tr('{name}: tap the gap on {poss} timeline where you think the song goes.', { name: `<b style="color:${picker.color}">${esc(picker.name)}</b>`, poss: esc(poss(p.name)) })}</p>
+          <div class="inline"><button class="btn ghost" data-action="chBack">${tr('Back')}</button></div>`
+        : `<h1>${guest && me === p.id ? tr('Locked in') : tr('{name} locked in', { name: esc(p.name) })}</h1>
+          <div class="challengers">${status}</div>
+          ${pending.length ? waiting(tr('Waiting for {names} to decide…', { names: names(pending) })) : ''}`}
+      </div>
+    </div>`;
   } else if (game.phase === 'challenge') {
     tlMode = 'challenge';
     let others = game.players.filter((x) => x.id !== p.id);
@@ -1148,9 +1191,28 @@ function renderGame() {
     return `<section class="tl-wrap mine" style="--pc:${mp.color}"><div class="tl-head">${tr('Your timeline')} <span class="meta">${mp.timeline.length === 1 ? tr('1 card') : tr('{n} cards', { n: mp.timeline.length })}</span></div>${timelineHtml(mp, 'view')}</section>`;
   })() : '';
 
+  // The challenge question for whoever on this screen still has to answer it. It can't be dismissed: answer to go on.
+  let ask = '';
+  if (game.phase === 'challenge' && roomGame() && !ui.challenger) {
+    const q = G.pendingChallengers(game).find((x) => mayAct(x.id));
+    if (q) {
+      const away = !guest && q.remote;
+      ask = `<div class="decide-bg"><div class="modal decide" style="--pc:${q.color}" role="dialog" aria-modal="true">
+        <p class="eyebrow" style="--pc:${q.color}">${guest ? tr('Your call') : tr('{name}, your call', { name: esc(q.name) })}</p>
+        <h2>${tr('Challenge {poss} pick?', { poss: esc(poss(p.name)) })}</h2>
+        ${away ? `<p class="hint">${tr("{poss} phone isn't connected, so answer here.", { poss: esc(poss(q.name)) })}</p>` : ''}
+        <div class="tl-wrap" style="--pc:${p.color}">${timelineHtml(p, 'watch')}</div>
+        <p class="hint">${tr('Spend a token and pick a different gap. If {name} is wrong and you are right, the card is yours.', { name: esc(p.name) })} ${coins(q.tokens, 0)}</p>
+        <div class="inline wrap">
+          <button class="btn big" data-action="chYes" data-id="${q.id}">${tr('Challenge')} <span class="cost">1</span></button>
+          <button class="btn ghost big" data-action="chPass" data-id="${q.id}">${tr('Let it ride')}</button>
+        </div></div></div>`;
+    }
+  }
+
   return `<div class="game ${guest ? 'is-guest' : ''}">
     <header class="gtop">${logo(true)}<div class="scores">${scoreboard()}</div>${gameMenu()}</header>
-    ${hostBanner()}${spectator}
+    ${hostBanner()}${spectator}${ask}
     <main class="stage">${stage}</main>
     <section class="tl-wrap" style="--pc:${p.color}">
       <div class="tl-head">${guest && me === p.id ? tr('Your timeline') : tr('{who} timeline', { who: `<b>${esc(poss(p.name))}</b>` })} <span class="meta">${p.timeline.length === 1 ? tr('1 card') : tr('{n} cards', { n: p.timeline.length })}${tlMode === 'challenge' && ui.challenger ? ` · ${tr('{name} is picking a gap', { name: esc(game.players.find((x) => x.id === ui.challenger).name) })}` : ''}</span></div>
@@ -1213,8 +1275,11 @@ $app.addEventListener('click', async (e) => {
   const a = el.dataset.action;
   const id = el.dataset.id;
   const player = id && setup.players.find((p) => p.id === id);
-  if (role === 'guest' && game && ['draw', 'play', 'replay', 'skip', 'buy', 'lock', 'reveal', 'named', 'next', 'slot', 'challenger'].includes(a)) {
+  if (role === 'guest' && game && ['draw', 'play', 'replay', 'skip', 'buy', 'lock', 'reveal', 'named', 'next', 'slot', 'challenger', 'chYes', 'chPass', 'chBack'].includes(a)) {
     const me = myPlayerId();
+    if (a === 'chYes') { if (id === me && game.phase === 'challenge') { ui.challenger = me; render(); } return; }
+    if (a === 'chBack') { ui.challenger = null; render(); return; }
+    if (a === 'chPass') { if (id === me && game.phase === 'challenge') { game.turn.passed = [...(game.turn.passed || []), me]; render(); sendAct('pass'); } return; }
     if (a === 'slot') {
       const slot = +el.dataset.slot;
       if (game.phase === 'listen' && mayAct(G.activePlayer(game).id)) { game.turn.slot = slot; render(); sendAct('slot', { slot }); }
@@ -1232,7 +1297,19 @@ $app.addEventListener('click', async (e) => {
     sendAct(a);
     return;
   }
+  if (role !== 'guest' && game && ui.view === 'game') {
+    // Only the screen whose move it is gets to make it (see mayAct).
+    const turnHere = mayAct(G.activePlayer(game).id);
+    if (['draw', 'skip', 'buy', 'lock', 'named', 'next'].includes(a) && !turnHere) return;
+    if (a === 'slot' && game.phase === 'listen' && !turnHere) return;
+    if (a === 'slot' && game.phase === 'challenge' && ui.challenger && !mayAct(ui.challenger)) return;
+    if (a === 'reveal' && (!turnHere || (roomGame() && G.pendingChallengers(game).length))) return;
+    if (['challenger', 'chYes', 'chPass'].includes(a) && !mayAct(id)) return;
+  }
   switch (a) {
+    case 'chYes': if (game?.phase === 'challenge') { ui.challenger = id; render(); } return;
+    case 'chBack': ui.challenger = null; render(); return;
+    case 'chPass': act(() => G.passChallenge(game, id)); autoReveal(); return;
     case 'openRoom': return openRoom();
     case 'closeRoom': return closeRoom();
     case 'roomModal': ui.modal = { type: 'room' }; render(); return;
@@ -1339,11 +1416,11 @@ $app.addEventListener('click', async (e) => {
         G.removeChallenge(game, pid);
         if (G.addChallenge(game, pid, slot)) ui.challenger = null;
         else game = JSON.parse(undoStack.pop());
-        saveGame(); render();
+        saveGame(); render(); autoReveal();
       }
       return;
     }
-    case 'lock': act(() => G.lockIn(game)); return;
+    case 'lock': act(() => G.lockIn(game)); autoReveal(); return;
     case 'challenger': {
       const c = game.turn.challengers.find((x) => x.player === id);
       if (c) { act(() => G.removeChallenge(game, id)); ui.challenger = null; render(); return; }
@@ -1395,6 +1472,7 @@ document.addEventListener('keydown', (e) => {
   const t = game.turn;
   if (e.key === ' ') { e.preventDefault(); if (t) togglePlay(); return; }
   if (e.key === 'u' || e.key === 'U') { undo(); return; }
+  if (!mayAct(G.activePlayer(game).id)) return; // a phone player's turn: their phone has the controls
   const n = G.activePlayer(game).timeline.length;
   if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && game.phase === 'listen') {
     e.preventDefault();
@@ -1405,8 +1483,8 @@ document.addEventListener('keydown', (e) => {
   }
   if (e.key === 'Enter') {
     e.preventDefault();
-    if (game.phase === 'listen' && t.slot != null) act(() => G.lockIn(game));
-    else if (game.phase === 'challenge') { ui.challenger = null; act(() => G.reveal(game)); }
+    if (game.phase === 'listen' && t.slot != null) { act(() => G.lockIn(game)); autoReveal(); }
+    else if (game.phase === 'challenge' && !(roomGame() && G.pendingChallengers(game).length)) { ui.challenger = null; act(() => G.reveal(game)); }
     else if (game.phase === 'reveal') nextTurn();
     else if (game.phase === 'draw') beginTurn();
   }
