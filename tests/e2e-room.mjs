@@ -146,6 +146,43 @@ try {
   check('phone next moves the game on', await host.until(`(g => g.log.filter((l) => l.type === 'turn').length === 2 && g.phase !== 'reveal')(JSON.parse(localStorage.getItem('nd.game')))`));
   await host.shot('room-host-game.png');
 
+  // ---------- game modes through a room ----------
+  await host.ev(`window.confirm = () => true`);
+  await host.click('[data-action="setup"]');
+  await host.until(`!!document.querySelector('.setup')`);
+  await host.click('[data-action="mode"][data-id="auction"]');
+  await host.click('[data-action="start"]');
+  check('auction: phone gets a year box', await phone.until(`!!document.querySelector('.guess-me input')`));
+  check('auction: host shows the phone player as guessing', await host.until(`document.body.innerText.includes('guessing on their phone')`));
+  await host.ev(`(() => { const r = document.querySelector('.guess-rows input'); r.value = '1980'; r.closest('.guess-row').querySelector('[data-action="guess"]').click(); })()`);
+  await host.until(`Object.keys(JSON.parse(localStorage.getItem('nd.game')).turn.guesses).length === 1`);
+  await sleep(400);
+  check('auction: phone never gets the other year', !(await phone.ev(`document.body.innerText.includes('1980')`)));
+  await phone.ev(`document.querySelector('.guess-me input').value = '1990'`);
+  await phone.shot('phone-auction-guess.png');
+  await phone.click('.guess-me [data-action="guess"]');
+  check('auction: both years in = reveal', await host.until(`JSON.parse(localStorage.getItem('nd.game')).phase === 'reveal'`));
+  check('auction: phone sees both years', await phone.until(`document.querySelectorAll('.guess-list li').length === 2`));
+  await phone.shot('phone-auction-reveal.png');
+
+  await host.click('[data-action="setup"]');
+  await host.until(`!!document.querySelector('.setup')`);
+  await host.click('[data-action="mode"][data-id="sprint"]');
+  await host.click('[data-action="start"]');
+  check('sprint: phone gets a buzz button', await phone.until(`!!document.querySelector('.buzz-big')`));
+  await phone.shot('phone-sprint.png');
+  await phone.click('.buzz-big');
+  check('sprint: phone buzz reaches the host', await host.until(`JSON.parse(localStorage.getItem('nd.game')).phase === 'buzzed'`));
+  check('sprint: phone places the card', await phone.until(`!!document.querySelector('[data-action="lock"]') && !!document.querySelector('.gap[data-slot="0"]')`));
+  await phone.click('.gap[data-slot="0"]');
+  await host.until(`JSON.parse(localStorage.getItem('nd.game')).turn.slot === 0`);
+  await phone.click('[data-action="lock"]');
+  check('sprint: phone lock resolves on the host', await host.until(`(g => g.phase === 'reveal' || g.turn.out.length === 1)(JSON.parse(localStorage.getItem('nd.game')))`));
+  await host.click('[data-action="setup"]');
+  await host.until(`!!document.querySelector('.setup')`);
+  await host.click('[data-action="mode"][data-id="classic"]');
+  await host.click('[data-action="resume"]');
+
   // a phone that reloads gets its seat back
   await phone.cdp('Page.reload');
   check('phone reload keeps the seat', await phone.until(`!!document.querySelector('.game.is-guest') && !!document.querySelector('.score.me')`));

@@ -144,6 +144,58 @@ try {
   await shot('language.png');
   await click('[data-action="lang"]');
   check('language switch goes back', await until(`document.documentElement.lang === ${JSON.stringify(was)}`));
+  // ---------- Year auction + generation war ----------
+  await click('[data-action="setup"]');
+  await until(`!!document.querySelector('.setup')`);
+  await click('[data-action="mode"][data-id="auction"]');
+  await click('[data-action="setting"][data-id="war"]');
+  check('war preview shows two teams', await until(`document.querySelectorAll('.war-team').length === 2`));
+  check('classic-only rules hidden in auction', !(await ev(`!!document.querySelector('[data-id="challenges"]')`)));
+  await ev(`document.querySelector('.rules').scrollIntoView()`);
+  await shot('modes-setup.png');
+  await ev(`window.confirm = () => true`); // the reload above dropped the earlier stub
+  await click('[data-action="start"]');
+  check('auction starts with a year box per player', await until(`document.querySelectorAll('.guess-rows .guess-row input').length === 3`));
+  check('team bar in the header', (await ev(`document.querySelectorAll('.teams .team').length`)) === 2);
+  const warGame = await ev(`JSON.parse(localStorage.getItem('nd.game'))`);
+  const eraOk = warGame.players.every((p) => { const other = warGame.teams.find((tm) => tm.id !== p.team); return p.timeline.every((c) => other.decades.some((d) => c.y >= d && c.y <= d + 9)); });
+  check('war starters come from the other team\'s era', eraOk, JSON.stringify(warGame.players.map((p) => [p.team, p.timeline.map((c) => c.y)])) + JSON.stringify(warGame.teams.map((tm) => tm.decades)));
+  for (const y of ['1975', '1990', '2012']) {
+    await ev(`(() => { const r = document.querySelector('.guess-rows .guess-row input'); r.value = ${JSON.stringify(y)}; r.closest('.guess-row').querySelector('[data-action="guess"]').click(); })()`);
+    await sleep(150);
+  }
+  check('all guesses in = reveal', await until(`!!document.querySelector('.guess-list') && document.querySelectorAll('.guess-list li').length === 3`));
+  const ag = await ev(`JSON.parse(localStorage.getItem('nd.game'))`);
+  check('closest guess got the card', ag.players.reduce((n, p) => n + p.timeline.length, 0) === 3 + ag.turn.result.winners.length && ag.turn.result.winners.length >= 1);
+  await shot('auction-reveal.png');
+  await click('[data-action="next"]');
+  check('next song asks for years again', await until(`document.querySelectorAll('.guess-rows .guess-row input').length === 3`));
+  await shot('auction-guess.png');
+
+  // ---------- Intro sprint ----------
+  await click('[data-action="setup"]');
+  await until(`!!document.querySelector('.setup')`);
+  await click('[data-action="setting"][data-id="war"]');
+  await click('[data-action="mode"][data-id="sprint"]');
+  await click('[data-action="start"]');
+  check('sprint shows buzzers and clip pills', await until(`document.querySelectorAll('.buzzers .buzz').length === 3 && document.querySelectorAll('.clips .clip').length === 6`));
+  check('clips advance', await until(`JSON.parse(localStorage.getItem('nd.game')).turn.level >= 1`, 9000));
+  await shot('sprint.png');
+  await ev(`document.dispatchEvent(new KeyboardEvent('keydown', { key: '2', bubbles: true }))`);
+  check('key 2 buzzes the second player', await until(`JSON.parse(localStorage.getItem('nd.game')).turn.buzz === JSON.parse(localStorage.getItem('nd.game')).players[1].id && !!document.querySelector('[data-action="lock"]')`));
+  await click('.gap[data-slot="0"]');
+  await shot('sprint-buzzed.png');
+  await click('[data-action="lock"]');
+  check('lock resolves (card or out)', await until(`!!document.querySelector('.big-card') || !!document.querySelector('.buzz.out')`));
+  if (!(await ev(`!!document.querySelector('.big-card')`))) await click('[data-action="giveUp"]');
+  check('sprint reveals', await until(`!!document.querySelector('.big-card')`));
+  await shot('sprint-reveal.png');
+  const sg = await ev(`JSON.parse(localStorage.getItem('nd.game'))`);
+  check('sprint cards add up', sg.players.reduce((n, p) => n + p.timeline.length, 0) === 3 + (sg.turn.result.winner ? 1 : 0));
+  await click('[data-action="setup"]');
+  await until(`!!document.querySelector('.setup')`);
+  await click('[data-action="mode"][data-id="classic"]');
+
   check('no page errors', errors.length === 0, errors.join(' | ').slice(0, 300));
 } catch (e) {
   check('run', false, e.stack);

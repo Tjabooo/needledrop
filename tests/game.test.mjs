@@ -265,3 +265,118 @@ test('equal turns: a catching-up last player who names it goes again; last seat 
   G.nextTurn(g);
   assert.equal(g.phase, 'over');
 });
+
+// ---------- game modes ----------
+
+const card = (y, k = 'c' + y) => ({ k, y, a: 'A', t: 'T' + y });
+const three = [{ id: 'pa', name: 'Pappa', born: '1969' }, { id: 'ma', name: 'Mamma', born: '1973' }, { id: 'ol', name: 'Oliver', born: '2006' }];
+
+test('generation war splits at the biggest birth-year gap', () => {
+  const teams = G.generationTeams(three);
+  assert.deepEqual(teams.map((tm) => tm.members), [['pa', 'ma'], ['ol']]);
+  assert.deepEqual(teams[0].decades, [1970, 1980, 1990, 2000]);
+  assert.deepEqual(teams[1].decades, [2010, 2020]);
+  assert.equal(G.generationTeams([{ id: 'a', born: '1990' }, { id: 'b', born: '1994' }]), null, 'no second generation');
+  assert.equal(G.generationTeams([{ id: 'a', born: '1990' }, { id: 'b', born: '' }]), null, 'missing birth year');
+});
+
+test('generation war: songs from the other team, team target scales with size', () => {
+  const g = G.newGame({ players: three, settings: { war: true, target: 2, equalTurns: false, challenges: false } });
+  assert.equal(g.players[0].team, 'a');
+  assert.equal(g.players[2].team, 'b');
+  assert.deepEqual(G.warDecades(g, 0), [2010, 2020]);
+  assert.deepEqual(G.warDecades(g, 2), [1970, 1980, 1990, 2000]);
+  const ap = G.newGame({ players: three, settings: { war: true, mode: 'auction' } });
+  assert.deepEqual(G.warDecades(ap, 0), [2010, 2020], 'starting cards: the other team\'s era');
+  ap.phase = 'draw';
+  assert.deepEqual(G.warDecades(ap, 0), G.warDecades(ap, 2), 'all-play songs: one era for everyone');
+  const sides = G.scoreSides(g);
+  assert.deepEqual(sides.map((s) => s.target), [4, 2]);
+  // Oliver alone reaches 2 cards: his team wins
+  G.dealStarter(g, 2, card(2015));
+  g.current = 2;
+  G.startTurn(g, card(2018));
+  G.chooseSlot(g, 1);
+  G.lockIn(g);
+  assert.deepEqual(g.winners, ['ol']);
+  assert.deepEqual(g.winSides, ['b']);
+  // war off without birth years
+  const off = G.newGame({ players: [{ id: 'x', born: '' }, { id: 'y', born: '' }], settings: { war: true } });
+  assert.equal(off.settings.war, false);
+  assert.equal(off.teams, null);
+});
+
+test('year auction: closest guess gets the card, exact year a token, ties share', () => {
+  const g = G.newGame({ players: three, settings: { mode: 'auction', target: 3, startTokens: 0 } });
+  G.startTurn(g, card(1987));
+  assert.equal(g.phase, 'guess');
+  assert.ok(!G.guessYear(g, 'pa', 'abc'));
+  G.guessYear(g, 'pa', 1987);
+  G.guessYear(g, 'ma', 1990);
+  assert.deepEqual(G.pendingGuessers(g).map((p) => p.id), ['ol']);
+  G.guessYear(g, 'ol', 1980);
+  G.revealAuction(g);
+  assert.deepEqual(g.turn.result.winners, ['pa']);
+  assert.equal(g.players[0].tokens, 1);
+  assert.equal(g.players[0].timeline.length, 1);
+  G.nextTurn(g);
+  G.startTurn(g, card(2000));
+  G.guessYear(g, 'ma', 1998);
+  G.guessYear(g, 'ol', 2002);
+  G.revealAuction(g);
+  assert.deepEqual(g.turn.result.winners.sort(), ['ma', 'ol']);
+  assert.equal(g.turn.result.exact.length, 0);
+  assert.equal(g.players[1].timeline.length, 1);
+  assert.equal(g.players[2].timeline.length, 1);
+  assert.ok(!G.goesAgain(g));
+});
+
+test('year auction ends as soon as someone reaches the target', () => {
+  const g = G.newGame({ players: three.slice(0, 2), settings: { mode: 'auction', target: 1 } });
+  G.startTurn(g, card(1975));
+  G.guessYear(g, 'pa', 1976);
+  G.revealAuction(g);
+  assert.equal(g.winner, 'pa');
+  G.nextTurn(g);
+  assert.equal(g.phase, 'over');
+});
+
+test('intro sprint: buzz, wrong spot locks you out, right spot earns a speed bonus', () => {
+  const g = G.newGame({ players: three, settings: { mode: 'sprint', startTokens: 0 } });
+  G.dealStarter(g, 0, card(1980, 's0'));
+  G.dealStarter(g, 1, card(1980, 's1'));
+  G.dealStarter(g, 2, card(1980, 's2'));
+  G.startTurn(g, card(1995));
+  assert.equal(g.phase, 'sprint');
+  assert.ok(G.buzz(g, 'pa'));
+  assert.ok(!G.buzz(g, 'ma'), 'one buzz at a time');
+  G.chooseSlot(g, 0); // before 1980: wrong
+  G.sprintLock(g);
+  assert.equal(g.phase, 'sprint');
+  assert.deepEqual(g.turn.out, ['pa']);
+  assert.ok(!G.canBuzz(g, 'pa'));
+  G.setSprintLevel(g, 3);
+  G.buzz(g, 'ma');
+  G.chooseSlot(g, 1);
+  G.sprintLock(g);
+  assert.equal(g.phase, 'reveal');
+  assert.equal(g.turn.result.winner, 'ma');
+  assert.equal(g.players[1].tokens, G.sprintBonus(3));
+  assert.equal(g.players[1].timeline.length, 2);
+});
+
+test('intro sprint: everyone wrong = card out; buying costs three tokens', () => {
+  const g = G.newGame({ players: three.slice(0, 2), settings: { mode: 'sprint', startTokens: 3 } });
+  G.dealStarter(g, 0, card(1980, 's0'));
+  G.dealStarter(g, 1, card(1980, 's1'));
+  G.startTurn(g, card(1995));
+  for (const id of ['pa', 'ma']) { G.buzz(g, id); G.chooseSlot(g, 0); G.sprintLock(g); }
+  assert.equal(g.phase, 'reveal');
+  assert.equal(g.turn.result.winner, null);
+  G.nextTurn(g);
+  G.startTurn(g, card(2001));
+  assert.ok(G.sprintBuy(g, 'ma'));
+  assert.equal(g.players[1].tokens, 0);
+  assert.equal(g.players[1].timeline.length, 2);
+  assert.ok(G.canSkip(g) === false, 'no skipping after the reveal');
+});

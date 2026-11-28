@@ -29,7 +29,22 @@ export const DEFAULT_SETTINGS = {
   ownTaste: false, // each player's songs come from their own packs (plus "everyone" packs)
   exclude: ['extreme'], // library tags never dealt
   startAt: 'start', // start | 30 | random
+  mode: 'classic', // classic | auction (everyone guesses a year) | sprint (buzz in on growing clips)
+  war: false, // generation war: two teams split by birth year, each gets songs from the other team's youth
 };
+
+export const MODES = ['classic', 'auction', 'sprint'];
+
+// Year auction and Intro sprint: every player plays every song (no turns of their own).
+export const allPlay = (g) => g.settings.mode === 'auction' || g.settings.mode === 'sprint';
+
+// Intro sprint: clip lengths in seconds (after the last one the song keeps playing) and the token bonus per clip.
+export const SPRINT_CLIPS = [2, 4, 7, 12, 20];
+export function sprintBonus(level) {
+  return level <= 1 ? 2 : level <= 3 ? 1 : 0;
+}
+
+export const TEAM_COLORS = ['#f5c044', '#58a6ff'];
 
 export const COLORS = ['#ff6b4a', '#4ad6c2', '#f5c044', '#8f7bff', '#ff5fa2', '#7fd46a', '#58a6ff', '#ff9f43'];
 
@@ -169,13 +184,20 @@ export function insertSorted(timeline, card) {
 
 export function newGame(setup) {
   const settings = { ...DEFAULT_SETTINGS, ...(setup.settings || {}) };
+  if (!MODES.includes(settings.mode)) settings.mode = 'classic';
+  const teams = settings.war ? generationTeams(setup.players) : null;
+  if (!teams) settings.war = false;
+  const teamOf = (id) => teams?.find((tm) => tm.members.includes(id))?.id;
   return {
     v: 1,
+    teams,
+    songNo: 0,
     phase: 'deal',
     settings,
     players: setup.players.map((p, i) => ({
       id: p.id, name: p.name, color: p.color || COLORS[i % COLORS.length],
       tokens: settings.startTokens, timeline: [],
+      ...(teams ? { team: teamOf(p.id) } : {}),
       ...(p.remote ? { remote: p.remote } : {}), // seat of a player on their own phone (room games)
     })),
     current: 0,
@@ -197,28 +219,39 @@ export function dealStarter(g, playerIndex, card) {
   g.used.push(card.k);
 }
 
+function newTurn(card) {
+  return {
+    card, slot: null, challengers: [], passed: [], named: false, result: null, bought: false,
+    guesses: {}, // auction: player id -> year
+    level: 0, out: [], buzz: null, // sprint: clip index, players locked out, who buzzed
+  };
+}
+
+const START_PHASE = { classic: 'listen', auction: 'guess', sprint: 'sprint' };
+
 export function startTurn(g, card) {
-  g.phase = 'listen';
+  g.phase = START_PHASE[g.settings.mode] || 'listen';
   g.used.push(card.k);
-  g.turn = { card, slot: null, challengers: [], passed: [], named: false, result: null, bought: false };
+  g.turn = newTurn(card);
 }
 
 export function chooseSlot(g, slot) {
-  if (g.phase !== 'listen' && g.phase !== 'challenge') return;
+  if (g.phase !== 'listen' && g.phase !== 'challenge' && g.phase !== 'buzzed') return;
   g.turn.slot = slot;
 }
 
-// Spend a token to throw the current song away and draw another.
+// Classic: spend a token to throw the current song away and draw another. Auction/sprint: free (it's everyone's song).
 export function canSkip(g) {
+  if (allPlay(g)) return g.phase === 'guess' || g.phase === 'sprint';
   return g.phase === 'listen' && activePlayer(g).tokens >= 1;
 }
 
 export function skip(g, card) {
   const p = activePlayer(g);
-  if (p.tokens < 1) return false;
-  p.tokens -= 1;
+  if (!canSkip(g)) return false;
+  if (!allPlay(g)) p.tokens -= 1;
   g.used.push(card.k);
-  g.turn = { card, slot: null, challengers: [], passed: [], named: false, result: null, bought: false };
+  g.turn = newTurn(card);
   g.log.push({ type: 'skip', player: p.id });
   return true;
 }
@@ -316,7 +349,7 @@ function resolve(g) {
 
 // The active player said the artist and title out loud and the table agrees: one token (up to the cap).
 export function setNamed(g, named) {
-  if (g.phase !== 'reveal' || !g.settings.nameBonus) return;
+  if (g.phase !== 'reveal' || !g.settings.nameBonus || allPlay(g)) return;
   const p = activePlayer(g);
   if (named && !g.turn.named) {
     if (p.tokens < g.settings.maxTokens) { p.tokens += 1; g.turn.namedPaid = true; }
@@ -329,37 +362,61 @@ export function setNamed(g, named) {
   checkWinner(g); // naming can earn another turn, which keeps a finished last round going
 }
 
+// What counts for winning: each player, or in a generation war each team (target = cards to win x team size).
+export function scoreSides(g) {
+  if (g.teams) {
+    return g.teams.map((tm) => {
+      const players = g.players.filter((p) => p.team === tm.id);
+      return {
+        id: tm.id, team: tm, players, target: g.settings.target * players.length,
+        cards: players.reduce((n, p) => n + p.timeline.length, 0), tokens: players.reduce((n, p) => n + p.tokens, 0),
+      };
+    });
+  }
+  return g.players.map((p) => ({ id: p.id, team: null, players: [p], target: g.settings.target, cards: p.timeline.length, tokens: p.tokens }));
+}
+
+const sideOf = (g, p) => scoreSides(g).find((s) => s.players.some((x) => x.id === p.id));
+
+// Most of the target wins (teams of different sizes compare fairly); tie: most tokens per player; still tied = shared.
+function pickWinners(g, list) {
+  const ratio = (s) => s.cards / s.target;
+  const best = Math.max(...list.map(ratio));
+  let top = list.filter((s) => ratio(s) === best);
+  const rich = Math.max(...top.map((s) => s.tokens / s.players.length));
+  top = top.filter((s) => s.tokens / s.players.length === rich);
+  g.winSides = top.map((s) => s.id);
+  g.winners = top.flatMap((s) => s.players.map((p) => p.id));
+  g.winner = g.winners[0];
+}
+
 function checkWinner(g) {
-  const target = g.settings.target;
-  const reached = g.players.filter((p) => p.timeline.length >= target);
+  const all = scoreSides(g);
+  const reached = all.filter((s) => s.cards >= s.target);
   g.winner = null;
   g.winners = null;
+  g.winSides = null;
   if (!reached.length) { g.finalRound = false; return; }
-  if (!g.settings.equalTurns) { g.winner = reached[0].id; g.winners = [g.winner]; return; }
+  if (allPlay(g) || !g.settings.equalTurns) { pickWinners(g, reached); return; } // all-play: everyone heard every song
   // Last round: the players after the active one (in turn order) still get their turn,
   // so the game ends once the last seat has played.
   g.finalRound = true;
-  if (g.current === g.players.length - 1 && !goesAgain(g)) {
-    const best = Math.max(...g.players.map((p) => p.timeline.length));
-    let top = g.players.filter((p) => p.timeline.length === best);
-    const rich = Math.max(...top.map((p) => p.tokens));
-    top = top.filter((p) => p.tokens === rich); // tie on cards: most tokens left wins; still tied = shared win
-    g.winners = top.map((p) => p.id);
-    g.winner = g.winners[0];
-  }
+  if (g.current === g.players.length - 1 && !goesAgain(g)) pickWinners(g, all);
 }
 
-// Who reached the target first and started the last round (equal-turns games).
+// The player (or team) who reached the target first and started the last round (equal-turns games).
 export function finalRoundBy(g) {
   if (!g.finalRound) return null;
-  return g.players.find((p) => p.timeline.length >= g.settings.target) || null;
+  return scoreSides(g).find((s) => s.cards >= s.target) || null;
 }
 
 // Right spot AND named artist + title (not bought): the same player goes again.
 // In the last round nobody already at the target gets an extra turn.
 export function goesAgain(g) {
   const t = g.turn;
-  if (g.finalRound && activePlayer(g).timeline.length >= g.settings.target) return false;
+  if (allPlay(g)) return false;
+  const side = sideOf(g, activePlayer(g));
+  if (g.finalRound && side && side.cards >= side.target) return false;
   return !!(g.settings.nameBonus && t && t.result && t.result.correct && !t.result.bought && t.named);
 }
 
@@ -372,8 +429,112 @@ export function nextTurn(g) {
     g.current = (g.current + 1) % g.players.length;
     if (g.current === 0) g.round += 1;
   }
+  g.songNo = (g.songNo || 0) + 1;
   g.turn = null;
   g.phase = 'draw';
+}
+
+// ---------- Year auction: everyone types a year, closest gets the card ----------
+
+export function guessYear(g, playerId, year) {
+  if (g.phase !== 'guess') return false;
+  const y = parseInt(year, 10);
+  if (!(y >= 1900 && y <= 2100) || !g.players.some((p) => p.id === playerId)) return false;
+  g.turn.guesses[playerId] = y;
+  return true;
+}
+
+export function pendingGuessers(g) {
+  if (g.phase !== 'guess' || !g.turn) return [];
+  return g.players.filter((p) => !(p.id in g.turn.guesses));
+}
+
+// Closest guess wins the card (ties: everyone tied gets it); an exact year also earns a token.
+export function revealAuction(g) {
+  if (g.phase !== 'guess') return false;
+  const { card, guesses } = g.turn;
+  const rows = Object.entries(guesses).map(([id, y]) => ({ id, y, off: Math.abs(y - card.y) }));
+  const best = rows.length ? Math.min(...rows.map((r) => r.off)) : null;
+  const winners = rows.filter((r) => r.off === best).map((r) => r.id);
+  const exact = best === 0 ? winners : [];
+  for (const id of winners) {
+    const p = g.players.find((x) => x.id === id);
+    p.timeline = insertSorted(p.timeline, card);
+    if (exact.includes(id) && p.tokens < g.settings.maxTokens) p.tokens += 1;
+  }
+  g.turn.result = { correct: winners.length > 0, winner: winners[0] || null, winners, exact, best };
+  g.phase = 'reveal';
+  g.log.push({ type: 'auction', card: card.k, year: card.y, winners });
+  checkWinner(g);
+  return true;
+}
+
+// ---------- Intro sprint: buzz in, place the song on your own timeline ----------
+
+export function setSprintLevel(g, level) {
+  if (g.phase !== 'sprint') return;
+  g.turn.level = Math.max(0, Math.min(SPRINT_CLIPS.length, level));
+}
+
+export function canBuzz(g, playerId) {
+  return g.phase === 'sprint' && g.players.some((p) => p.id === playerId) && !g.turn.out.includes(playerId);
+}
+
+export function buzz(g, playerId) {
+  if (!canBuzz(g, playerId)) return false;
+  Object.assign(g.turn, { buzz: playerId, slot: null, buzzLevel: g.turn.level });
+  g.phase = 'buzzed';
+  return true;
+}
+
+// Right gap: the card and a speed bonus. Wrong gap: out for this song, the clips go on for everyone else.
+export function sprintLock(g) {
+  if (g.phase !== 'buzzed' || g.turn.slot == null) return false;
+  const t = g.turn;
+  const p = g.players.find((x) => x.id === t.buzz);
+  if (slotFits(p.timeline, t.slot, t.card.y)) {
+    p.timeline = insertSorted(p.timeline, t.card);
+    const bonus = Math.max(0, Math.min(sprintBonus(t.buzzLevel), g.settings.maxTokens - p.tokens));
+    p.tokens += bonus;
+    t.result = { correct: true, winner: p.id, bonus, level: t.buzzLevel };
+    g.phase = 'reveal';
+    g.log.push({ type: 'sprint', player: p.id, card: t.card.k, year: t.card.y, level: t.buzzLevel });
+    checkWinner(g);
+    return true;
+  }
+  t.out.push(p.id);
+  Object.assign(t, { buzz: null, slot: null, lastWrong: p.id });
+  if (g.players.every((x) => t.out.includes(x.id))) sprintGiveUp(g);
+  else g.phase = 'sprint';
+  return true;
+}
+
+export function canSprintBuy(g, playerId) {
+  const p = g.players.find((x) => x.id === playerId);
+  return canBuzz(g, playerId) && p.tokens >= 3;
+}
+
+// Three tokens: the card goes straight onto your timeline, before anyone else buzzes.
+export function sprintBuy(g, playerId) {
+  if (!canSprintBuy(g, playerId)) return false;
+  const p = g.players.find((x) => x.id === playerId);
+  p.tokens -= 3;
+  p.timeline = insertSorted(p.timeline, g.turn.card);
+  g.turn.result = { correct: true, winner: p.id, bought: true, bonus: 0 };
+  g.phase = 'reveal';
+  g.log.push({ type: 'sprint', player: p.id, card: g.turn.card.k, year: g.turn.card.y, bought: true });
+  checkWinner(g);
+  return true;
+}
+
+// Nobody got it (or the table gave up): show the song, the card is out.
+export function sprintGiveUp(g) {
+  if (g.phase !== 'sprint' && g.phase !== 'buzzed') return false;
+  Object.assign(g.turn, { buzz: null, slot: null });
+  g.turn.result = { correct: false, winner: null };
+  g.phase = 'reveal';
+  g.log.push({ type: 'sprint', player: null, card: g.turn.card.k, year: g.turn.card.y });
+  return true;
 }
 
 export function standings(g) {
@@ -389,6 +550,36 @@ export function formativeDecades(born) {
   const from = Math.floor((b + 8) / 10) * 10;
   const to = Math.floor((b + 28) / 10) * 10;
   return DECADES.filter((d) => d >= from && d <= to);
+}
+
+// Generation war: split the players at the biggest gap between birth years. Null when someone has no birth year
+// or nobody is 10+ years apart (then there are no two generations to pit against each other).
+export function generationTeams(players) {
+  const born = players.map((p) => ({ id: p.id, y: parseInt(p.born, 10) }));
+  if (players.length < 2 || born.some((b) => !(b.y > 1900))) return null;
+  const sorted = born.slice().sort((a, b) => a.y - b.y);
+  let cut = 1;
+  let gap = -1;
+  for (let i = 1; i < sorted.length; i++) {
+    const d = sorted[i].y - sorted[i - 1].y;
+    if (d > gap) { gap = d; cut = i; }
+  }
+  if (gap < 10) return null;
+  return [sorted.slice(0, cut), sorted.slice(cut)].map((grp, i) => {
+    const ys = grp.map((b) => b.y);
+    const decades = [...new Set(ys.flatMap((y) => formativeDecades(y)))].sort((a, b) => a - b);
+    return { id: 'ab'[i], members: grp.map((b) => b.id), from: Math.min(...ys), to: Math.max(...ys), decades, color: TEAM_COLORS[i] };
+  });
+}
+
+// The decades a new song should come from in a generation war (null = no limit). Classic turns: the other team's
+// youth (starting cards too, in every mode). Year auction / Intro sprint (everyone hears the same song): the eras
+// take turns, song by song.
+export function warDecades(g, playerIndex) {
+  if (!g.teams) return null;
+  if (allPlay(g) && g.phase !== 'deal') return g.teams[(g.songNo || 0) % g.teams.length].decades;
+  const p = g.players[playerIndex];
+  return (g.teams.find((tm) => tm.id !== p.team) || g.teams[0]).decades;
 }
 
 // Spotify search results → playable songs. Drops live takes, remixes, remasters and compilations.

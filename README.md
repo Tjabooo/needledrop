@@ -19,6 +19,7 @@ Made for mixed-age game nights: each player can get songs from the years they gr
   - Any playlist you made on Spotify.
 - **Each player's era.** Enter birth years and press *Add everyone's era*: every player gets the songs from when they were roughly 8 to 28. Turn on *Everyone gets their own music* and each turn draws from that player's packs.
 - **Rules you know:** starter card each, tokens for naming artist + title, spend a token to skip a song or challenge someone's placement and steal the card, trade three tokens for a free card. Toggle any of them.
+- **Three game modes:** *Classic* (take turns), *Year auction* (everyone types a year, closest wins the card) and *Intro sprint* (buzz in on growing clips). Plus *Generation war*: teams by birth year, each playing the other generation's music.
 - **Leave out extreme metal** (on by default): skips death/black metal tracks.
 - **Undo** for misclicks, and the game survives a page reload.
 - **Setup links:** copy a link that carries players, packs and rules to another device.
@@ -44,6 +45,19 @@ Made for mixed-age game nights: each player can get songs from the years they gr
 4. First to the target number of cards wins.
 
 Keys: **space** play/pause · **← →** move between gaps · **enter** lock in / reveal / next · **U** undo.
+
+## Game modes
+
+Pick one under **Rules → Game mode**. Phones in a room play along in every mode.
+
+- **Classic:** the turns described above.
+- **Year auction:** everyone hears the same song and types a year (on their phone, or in a hidden box on the host screen). Once everyone is in, the closest guess gets the card on their timeline; ties all get it, an exact year earns a token too.
+- **Intro sprint:** the song plays in growing clips (2, 4, 7, 12 and 20 seconds, then the whole song). Anyone can buzz in (phone button, or keys 1–9 on the host). The buzzer places the song on their own timeline: right gap = the card plus +2 tokens for the first two clips, +1 for the next two. Wrong gap = locked out for that song while the clips go on for the rest. Three tokens buy the card outright.
+- **Generation war** (a switch, works with every mode): players split into two teams at the biggest gap between birth years (e.g. parents vs kids, at least 10 years apart). Each team's songs come from the years the *other* team grew up in; in auction and sprint, where everyone hears the same song, the two eras take turns. A team's score is its players' cards together, and its target is *cards to win × team size*, so a team of two can face a team of one.
+
+| Year auction | Intro sprint |
+| --- | --- |
+| ![Year auction reveal](docs/auction.png) | ![Intro sprint](docs/sprint.png) |
 
 ## Requirements
 

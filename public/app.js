@@ -131,7 +131,11 @@ async function resolveSong(song) {
 async function drawFor(playerIndex) {
   const p = game.players[playerIndex];
   for (let attempt = 0; attempt < 15; attempt++) {
-    const pool = G.buildPool(setup.packs, library, game.settings, { owner: p.id, used: game.used });
+    const all = G.buildPool(setup.packs, library, game.settings, { owner: game.teams ? null : p.id, used: game.used });
+    // Generation war: songs from the other team's youth (the whole deck once those run out).
+    const decs = G.warDecades(game, playerIndex);
+    const era = decs ? all.filter((s) => decs.some((d) => s.y >= d && s.y <= d + 9)) : all;
+    const pool = era.length ? era : all;
     if (!pool.length) throw new Error(game.settings.ownTaste ? t('Out of songs for {name}: add more song packs in setup.', { name: p.name }) : t('Out of songs: add more song packs in setup.'));
     const song = G.pick(pool);
     const card = await resolveSong(song);
@@ -148,21 +152,27 @@ function startPosition(card) {
   return 0;
 }
 
-async function playCard(card) {
+async function playCard(card, pos = startPosition(card)) {
   const dev = deviceId();
-  if (!dev) { toast(setup.device === 'browser' ? t('The browser player is still starting. Press play in a moment.') : t('Pick a Spotify device in setup.')); return; }
+  if (!dev) { toast(setup.device === 'browser' ? t('The browser player is still starting. Press play in a moment.') : t('Pick a Spotify device in setup.')); return false; }
   try {
-    await sp.play(dev, card.uri, startPosition(card));
+    await sp.play(dev, card.uri, pos);
     ui.started = card.k; // only once this song really started: a failed start must not "resume" the last Spotify song
     ui.playing = true;
-  } catch (e) { toast(explain(e)); }
+  } catch (e) { toast(explain(e)); render(); return false; }
   render();
+  return true;
 }
 
 async function togglePlay() {
   const card = game?.turn?.card;
   if (!card) return;
   sp.activate();
+  if (game.phase === 'sprint') {
+    if (sprint.on) { stopSprint(); await stopMusic(); render(); } else runSprint();
+    return;
+  }
+  if (game.phase === 'buzzed') return;
   const dev = deviceId();
   try {
     if (ui.playing) { await sp.pause(dev); ui.playing = false; }
@@ -176,6 +186,8 @@ async function replay() {
   const card = game?.turn?.card;
   if (!card) return;
   sp.activate();
+  if (game.phase === 'sprint') { runSprint(); return; }
+  if (game.phase === 'buzzed') return;
   try { await sp.play(deviceId(), card.uri, 0); ui.started = card.k; ui.playing = true; } catch (e) { toast(explain(e)); }
   render();
 }
@@ -183,6 +195,93 @@ async function replay() {
 async function stopMusic() {
   if (sp?.loggedIn && ui.playing) { try { await sp.pause(deviceId()); } catch { /* ignore */ } }
   ui.playing = false;
+}
+
+// ---------- Intro sprint clips (host only) ----------
+// Plays the song in growing clips (G.SPRINT_CLIPS seconds, a short pause between them), then keeps it playing.
+// Any change of phase (a buzz, the reveal, undo) or a new run stops the old loop.
+
+const sprint = { run: 0, on: false, gap: false };
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const CLIP_GAP = 2500;
+
+function stopSprint() {
+  sprint.run++;
+  sprint.on = false;
+  sprint.gap = false;
+}
+
+async function runSprint() {
+  if (role === 'guest' || game?.phase !== 'sprint') return;
+  const run = ++sprint.run;
+  const card = game.turn.card;
+  const live = () => sprint.run === run && game?.phase === 'sprint' && game.turn?.card?.k === card.k;
+  sprint.on = true;
+  while (live()) {
+    const len = G.SPRINT_CLIPS[game.turn.level];
+    sprint.gap = false;
+    render();
+    if (!(await playCard(card, game.turn.pos || 0))) { if (live()) { sprint.on = false; render(); } return; }
+    if (!live() || len == null) return; // after the last clip the song just plays on
+    await wait(len * 1000);
+    if (!live()) return;
+    try { await sp.pause(deviceId()); } catch { /* ignore */ }
+    ui.playing = false;
+    if (!live()) return;
+    sprint.gap = true;
+    render();
+    await wait(CLIP_GAP);
+    if (!live()) return;
+    G.setSprintLevel(game, game.turn.level + 1);
+    saveGame();
+  }
+}
+
+// After a sprint move: wrong buzz = the clips go on; reveal = play the song for everyone.
+function afterSprint() {
+  if (game?.phase === 'sprint') runSprint();
+  else if (game?.phase === 'reveal') { stopSprint(); playCard(game.turn.card, game.turn.pos || 0); }
+}
+
+async function doBuzz(pid) {
+  if (game?.phase !== 'sprint' || ui.busy) return;
+  snapshot();
+  if (!G.buzz(game, pid)) { undoStack.pop(); return; }
+  stopSprint();
+  saveGame();
+  render();
+  await stopMusic();
+  render();
+}
+
+function doSprintLock() {
+  if (game?.phase !== 'buzzed') return;
+  act(() => G.sprintLock(game));
+  afterSprint();
+}
+
+function doSprintBuy(pid) {
+  if (!G.canSprintBuy(game, pid)) return;
+  act(() => G.sprintBuy(game, pid));
+  afterSprint();
+}
+
+function giveUp() {
+  if (game?.phase === 'guess') { act(() => G.revealAuction(game)); return; }
+  if (game?.phase !== 'sprint' && game?.phase !== 'buzzed') return;
+  act(() => G.sprintGiveUp(game));
+  afterSprint();
+}
+
+// Year auction: reveal on its own once everyone has a year in.
+function guessFor(pid, year) {
+  if (game?.phase !== 'guess') return false;
+  snapshot();
+  if (!G.guessYear(game, pid, year)) { undoStack.pop(); return false; }
+  if (!G.pendingGuessers(game).length) G.revealAuction(game);
+  saveGame();
+  render();
+  return true;
 }
 
 // ---------- game flow ----------
@@ -197,8 +296,10 @@ function undo() {
   if (!prev) { toast(t('Nothing to undo')); return; }
   game = JSON.parse(prev);
   ui.challenger = null;
+  stopSprint();
   saveGame();
   toast(t('Undone'));
+  if (game.phase === 'sprint') runSprint();
 }
 
 function preflight() {
@@ -206,6 +307,7 @@ function preflight() {
   if (!sp.loggedIn) { toast('Log in to Spotify first.'); return false; }
   if (!setup.players.length) { toast(t('Add at least one player.')); return false; }
   if (setup.players.some((p) => !p.name.trim())) { toast(t('Every player needs a name.')); return false; }
+  if (setup.settings.war && !G.generationTeams(setup.players)) { toast(t('Generation war needs a birth year for every player, and two generations at least 10 years apart.'), 7000); return false; }
   const pool = G.buildPool(setup.packs, library, setup.settings, {});
   if (pool.length < setup.players.length * (setup.settings.target + 2)) {
     toast(t('Only {n} songs in your packs: add a few more so nobody runs dry.', { n: pool.length }));
@@ -246,11 +348,13 @@ async function beginTurn() {
   try {
     const card = await drawFor(game.current);
     G.startTurn(game, card);
+    game.turn.pos = startPosition(card);
     ui.busy = '';
     ui.started = card.k;
     saveGame();
     render();
-    await playCard(card);
+    if (game.phase === 'sprint') runSprint();
+    else await playCard(card, game.turn.pos);
   } catch (e) {
     ui.busy = '';
     toast(explain(e), 8000);
@@ -265,12 +369,15 @@ async function skipSong() {
   render();
   try {
     const card = await drawFor(game.current); // the current card is already in game.used
+    stopSprint();
     G.skip(game, card);
+    game.turn.pos = startPosition(card);
     ui.busy = '';
     ui.started = card.k;
     saveGame();
     render();
-    await playCard(card);
+    if (game.phase === 'sprint') runSprint();
+    else await playCard(card, game.turn.pos);
   } catch (e) {
     game = JSON.parse(undoStack.pop());
     ui.busy = '';
@@ -286,6 +393,7 @@ function act(fn) {
 }
 
 async function nextTurn() {
+  stopSprint();
   act(() => G.nextTurn(game));
   if (game.phase === 'over') { await stopMusic(); render(); return; }
   await beginTurn();
@@ -505,6 +613,7 @@ function onRemoteAct(pid, m) {
   if (!game || !m || typeof m.a !== 'string' || ui.busy || game.phase === 'over') return;
   const p = game.players.find((x) => x.remote === pid);
   if (!p) return;
+  if (G.allPlay(game)) { onRemoteAllPlay(p, m); return; }
   const active = G.activePlayer(game).id === p.id;
   const turn = game.turn;
   switch (m.a) {
@@ -535,19 +644,45 @@ function onRemoteAct(pid, m) {
   }
 }
 
+// Year auction / Intro sprint: every song is everyone's, so any phone may start, skip or move on.
+function onRemoteAllPlay(p, m) {
+  const turn = game.turn;
+  switch (m.a) {
+    case 'draw': if (game.phase === 'draw') beginTurn(); return;
+    case 'play': if (turn) togglePlay(); return;
+    case 'replay': if (turn) replay(); return;
+    case 'skip': if (G.canSkip(game)) skipSong(); return;
+    case 'next': if (game.phase === 'reveal') nextTurn(); return;
+    case 'guess': guessFor(p.id, m.year); return;
+    case 'revealGuesses': if (game.phase === 'guess' && Object.keys(turn.guesses).length) giveUp(); return;
+    case 'buzz': doBuzz(p.id); return;
+    case 'sbuy': doSprintBuy(p.id); return;
+    case 'slot': {
+      const slot = Number(m.slot);
+      if (game.phase !== 'buzzed' || turn.buzz !== p.id || !Number.isInteger(slot) || slot < 0 || slot > p.timeline.length) return;
+      act(() => G.chooseSlot(game, slot));
+      return;
+    }
+    case 'lock': if (game.phase === 'buzzed' && turn.buzz === p.id) doSprintLock(); return;
+    default:
+  }
+}
+
 // What the phones see. The song stays hidden until the reveal; the deck and history stay on this device.
 function roomState() {
   let g = null;
   if (game) {
     const { used, log, ...rest } = game;
     g = rest.turn && rest.phase !== 'reveal' ? { ...rest, turn: { ...rest.turn, card: null } } : rest;
+    // Auction years stay secret until the reveal: phones only learn who has guessed.
+    if (g.turn && g.phase === 'guess') g.turn.guesses = Object.fromEntries(Object.keys(g.turn.guesses || {}).map((k) => [k, true]));
   }
   const s = setup.settings;
   return {
     players: setup.players.map(({ id, name, color, remote: r }) => ({ id, name, color, remote: r || null })),
-    settings: { target: s.target, startTokens: s.startTokens, challenges: s.challenges, nameBonus: s.nameBonus, equalTurns: s.equalTurns },
+    settings: { target: s.target, startTokens: s.startTokens, challenges: s.challenges, nameBonus: s.nameBonus, equalTurns: s.equalTurns, mode: s.mode, war: s.war },
     packs: setup.packs.filter((p) => !p.off).map(({ songs, ...p }) => p),
-    game: g, playing: !!ui.playing, busy: !!(ui.busy && game), lang,
+    game: g, playing: !!ui.playing, busy: !!(ui.busy && game), lang, sprint: { on: sprint.on, gap: sprint.gap },
   };
 }
 
@@ -666,6 +801,10 @@ function onGuestEvent(ev) {
       const askNow = game && me && G.pendingChallengers(game).some((x) => x.id === me);
       const askBefore = before && me && before.phase === 'challenge' && before.round === game?.round && before.current === game?.current;
       if (askNow && !askBefore) navigator.vibrate?.([80, 40, 80, 40, 80]);
+      // All-play modes: buzz every phone when a new song starts.
+      const songNow = game && G.allPlay(game) && (game.phase === 'guess' || game.phase === 'sprint');
+      if (songNow && before && before.phase !== game.phase && (before.phase === 'draw' || before.phase === 'reveal')) navigator.vibrate?.(90);
+      if (game?.phase !== 'guess') ui.lastGuess = null;
       break;
     }
     case 'kicked': endGuest(t('The host removed you from the room.')); return;
@@ -723,8 +862,13 @@ function render() {
   else if (role === 'guest') html = remote?.game ? renderGame() : renderLobby();
   else html = ui.view === 'game' && game ? renderGame() : renderSetup();
   const busy = ui.busy || (role === 'guest' && remote?.busy ? t('Finding a record…') : '');
+  const kept = {};
+  for (const el of $app.querySelectorAll('input[data-keep]')) kept[el.dataset.keep] = el.value;
+  const focus = document.activeElement?.dataset?.keep;
   $app.innerHTML = html + renderModal() + (ui.toast ? `<div class="toast" role="status">${esc(ui.toast)}</div>` : '') +
     (busy ? `<div class="busy"><div class="busy-disc"></div><p>${esc(busy)}</p></div>` : '');
+  for (const el of $app.querySelectorAll('input[data-keep]')) if (kept[el.dataset.keep] && !el.value) el.value = kept[el.dataset.keep];
+  if (focus) $app.querySelector(`input[data-keep="${focus}"]`)?.focus();
   const sel = $app.querySelector('.gap.selected, .card.new');
   if (sel) sel.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
   syncRoom();
@@ -793,10 +937,11 @@ function renderLobby() {
   const s = remote.settings;
   const color = me?.color || 'var(--hot)';
   const rules = [
+    t('Mode: {mode}', { mode: t(MODE_LABEL[s.mode] || MODE_LABEL.classic) }),
+    ...(s.war ? [t('Generation war: teams by birth year')] : []),
     t('First to {n} cards wins', { n: s.target }),
     s.startTokens === 1 ? t('Everyone starts with 1 token') : t('Everyone starts with {n} tokens', { n: s.startTokens }),
-    s.challenges ? t('Challenges on') : t('Challenges off'),
-    s.nameBonus ? t('Name it for a token: on') : t('Name it for a token: off'),
+    ...((s.mode || 'classic') === 'classic' ? [s.challenges ? t('Challenges on') : t('Challenges off'), s.nameBonus ? t('Name it for a token: on') : t('Name it for a token: off')] : []),
   ];
   const owner = (id) => remote.players.find((p) => p.id === id);
   return `<div class="guest">
@@ -933,10 +1078,15 @@ function renderSetup() {
         <section class="panel rules">
           <h2>${t('Rules')}</h2>
           <label class="field row switch-row"><span><b>${t('Cards to win')}</b><small>${t('First to this many cards on their timeline wins.')}</small></span><input type="number" min="3" max="30" data-setting="target" value="${s.target}"></label>
+          <div class="field modes-field"><b>${t('Game mode')}</b>
+            <div class="modes" role="radiogroup">${G.MODES.map((m) => `<button class="mode ${s.mode === m ? 'on' : ''}" role="radio" aria-checked="${s.mode === m}" data-action="mode" data-id="${m}">${t(MODE_LABEL[m])}</button>`).join('')}</div>
+            <small>${esc(t(MODE_HINT[s.mode] || MODE_HINT.classic))}</small></div>
+          ${switchRow('war', 'Generation war', 'Two teams split by birth year. Each team gets songs from when the other team grew up. Team score = everyone\'s cards together.')}
+          ${s.war ? warPreview() : ''}
           <label class="field row switch-row"><span><b>${t('Starting tokens')}</b><small>${t('Coins everyone starts with. Spend 1 to skip a song or challenge, 3 to buy a card. Name artist + title to earn more (max 5).')}</small></span><input type="number" min="0" max="5" data-setting="startTokens" value="${s.startTokens}"></label>
-          ${switchRow('equalTurns', 'Equal turns', 'When someone reaches the target, the players after them in the order still get their turn. Most cards wins (tie: most tokens).')}
+          ${s.mode === 'classic' ? `${switchRow('equalTurns', 'Equal turns', 'When someone reaches the target, the players after them in the order still get their turn. Most cards wins (tie: most tokens).')}
           ${switchRow('challenges', 'Challenges', 'Others can spend a token to bet on a different spot and steal the card.')}
-          ${switchRow('nameBonus', 'Name it for a token', 'Say the artist and title out loud: +1 token if you get both, and another turn if the card is in the right spot too.')}
+          ${switchRow('nameBonus', 'Name it for a token', 'Say the artist and title out loud: +1 token if you get both, and another turn if the card is in the right spot too.')}` : ''}
           ${switchRow('ownTaste', 'Everyone gets their own music', 'Songs for each player come from their own packs (plus "Everyone" packs).')}
           ${switchRow('noExtreme', 'Leave out extreme metal', 'Skips death, black and similar metal.', s.exclude.includes('extreme'))}
           <label class="field row">${t('Songs start')} <select data-setting="startAt">
@@ -971,6 +1121,17 @@ function renderSetup() {
   </div>`;
 }
 
+// Generation war preview under the switch: who's on which team and which years they get.
+function warPreview() {
+  const teams = G.generationTeams(setup.players);
+  if (!teams) return `<p class="warn war-note">${t('Needs a birth year for every player, and two generations at least 10 years apart.')}</p>`;
+  const nameOf = (id) => esc(setup.players.find((p) => p.id === id)?.name || t('Unnamed'));
+  const range = (ds) => (ds.length ? (ds.length === 1 ? decade(ds[0]) : `${decade(ds[0])}–${decade(ds[ds.length - 1])}`) : t('all years'));
+  return `<div class="war-teams">${teams.map((tm, i) => `<div class="war-team" style="--tc:${tm.color}">
+    <b>${esc(teamName(tm))}</b><span>${tm.members.map(nameOf).join(', ')}</span>
+    <small>${t('gets songs from the {range}', { range: range(teams[1 - i].decades) })}</small></div>`).join('')}</div>`;
+}
+
 function switchRow(key, label, hint, on) {
   const value = on ?? setup.settings[key];
   return `<div class="field row switch-row"><span><b>${t(label)}</b><small>${esc(t(hint))}</small></span>
@@ -985,14 +1146,38 @@ function coins(n, max) {
 
 function scoreboard() {
   const me = myPlayerId();
-  return game.players.map((p, i) => `
-    <div class="score ${i === game.current && game.phase !== 'over' ? 'active' : ''} ${p.id === me ? 'me' : ''}" style="--pc:${p.color}">
-      <span class="sname">${esc(p.name)}${p.id === me ? ` <small class="you">${t('you')}</small>` : ''}</span>
+  const all = G.allPlay(game);
+  const hot = (p, i) => game.phase !== 'over' && (all ? game.turn?.buzz === p.id : i === game.current);
+  const team = (p) => game.teams?.find((tm) => tm.id === p.team);
+  return teamsBar() + game.players.map((p, i) => `
+    <div class="score ${hot(p, i) ? 'active' : ''} ${p.id === me ? 'me' : ''} ${all && game.turn?.out?.includes(p.id) ? 'out' : ''}" style="--pc:${p.color}">
+      <span class="sname">${team(p) ? `<i class="tdot" style="--tc:${team(p).color}"></i>` : ''}${esc(p.name)}${p.id === me ? ` <small class="you">${t('you')}</small>` : ''}</span>
       <span class="snum"><b>${p.timeline.length}</b>/${game.settings.target}</span>
       ${coins(p.tokens, game.settings.maxTokens)}
       <span class="bar"><span style="width:${Math.min(100, (p.timeline.length / game.settings.target) * 100)}%"></span></span>
     </div>`).join('');
 }
+
+// Generation war: a team is named after its birth years.
+function teamName(tm) {
+  if (tm.from === tm.to) return t('Born {y}', { y: tm.from });
+  const to = Math.floor(tm.from / 100) === Math.floor(tm.to / 100) ? String(tm.to).slice(2) : tm.to;
+  return t('Born {a}–{b}', { a: tm.from, b: to });
+}
+
+function teamsBar() {
+  if (!game.teams) return '';
+  return `<div class="teams">${G.scoreSides(game).map((s) => `<div class="team" style="--tc:${s.team.color}">
+    <b>${esc(teamName(s.team))}</b><span class="snum"><b>${s.cards}</b>/${s.target}</span>
+    <span class="bar"><span style="width:${Math.min(100, (s.cards / s.target) * 100)}%"></span></span></div>`).join('')}</div>`;
+}
+
+const MODE_LABEL = { classic: 'Classic', auction: 'Year auction', sprint: 'Intro sprint' };
+const MODE_HINT = {
+  classic: 'Take turns placing your own song on your timeline. Tokens, challenges, the works.',
+  auction: 'Everyone hears the same song and types a year. Closest gets the card, the exact year earns a token too.',
+  sprint: 'The song plays in growing clips (2, 4, 7, 12, 20 s). Buzz in and place it on your timeline: faster = more tokens, a wrong spot locks you out for that song.',
+};
 
 function cardHtml(c, cls = '') {
   return `<div class="card ${cls}" style="--cc:${yearColor(c.y)}">
@@ -1071,6 +1256,7 @@ function renderGame() {
   let tlMode = 'view';
 
   if (game.phase === 'over') return renderOver();
+  if (G.allPlay(game)) return renderAllPlay();
 
   if (game.phase === 'deal' || game.phase === 'draw' || !t) {
     stage = `<div class="stage-center">
@@ -1225,10 +1411,182 @@ function renderGame() {
   </div>`;
 }
 
+// Year auction and Intro sprint: one song for everyone, no turns of their own.
+function renderAllPlay() {
+  const t = game.turn;
+  const me = myPlayerId();
+  const guest = role === 'guest';
+  const mode = game.settings.mode;
+  const mePlayer = game.players.find((x) => x.id === me);
+  const pl = (id) => game.players.find((x) => x.id === id);
+  const nameB = (x) => `<b style="color:${x.color}">${esc(x.name)}</b>`;
+  const waiting = (s) => `<p class="waiting">${s}</p>`;
+  const songN = (game.songNo || 0) + 1;
+  const eyebrow = `<p class="eyebrow" style="--pc:var(--gold)">${tr(MODE_LABEL[mode])} · ${tr('song {n}', { n: songN })}</p>`;
+  const sprintNow = guest ? remote?.sprint || {} : sprint;
+  // The song controls belong to the host screen (the music plays there); phones can start and skip too.
+  const controls = () => `<div class="controls">
+      <button class="btn round" data-action="play" title="${tr('Play/pause (space)')}">${(mode === 'sprint' ? sprintNow.on : ui.playing) ? '❚❚' : '▶'}</button>
+      <button class="btn ghost" data-action="replay" title="${tr('From the start')}">${mode === 'sprint' ? tr('⟲ Clip again') : tr('⟲ Restart')}</button>
+      <button class="btn ghost" data-action="skip" ${G.canSkip(game) ? '' : 'disabled'} title="${tr('Unknown or wrong song? Skipping is free in this mode.')}">${tr('Skip song')}</button>
+    </div>`;
+  let stage = '';
+  // Which timelines show under the stage: a phone sees its own, the host screen everyone's (for thinking).
+  let focus = null;
+  let tlMode = 'view';
+
+  if (game.phase === 'draw' || game.phase === 'deal' || !t) {
+    stage = `<div class="stage-center">
+      ${eyebrow}
+      <h1 class="who" style="--pc:var(--gold)">${tr('Everyone plays')}</h1>
+      <p class="lead">${tr(MODE_HINT[mode])}</p>
+      ${game.teams ? `<p class="hint">${tr('Generation war: the songs take turns between the two eras.')}</p>` : ''}
+      ${guest && !me ? waiting(tr('Waiting for the next song…')) : `<button class="btn big" data-action="draw">${tr('Play a song')}</button>`}
+    </div>`;
+  } else if (game.phase === 'guess') {
+    const pending = G.pendingGuessers(game);
+    let entry = '';
+    if (guest && mePlayer) {
+      entry = t.guesses[me] ? `<p class="locked-guess">${tr('Locked in: {y}', { y: `<b>${esc(ui.lastGuess || '✓')}</b>` })} <button class="btn ghost small" data-action="reguess">${tr('Change')}</button></p>`
+        : `<div class="guess-me"><input class="guess-in" data-keep="guess-me" id="guess-${me}" type="number" inputmode="numeric" min="1900" max="2100" placeholder="${tr('Year')}" autocomplete="off">
+          <button class="btn big" data-action="guess" data-id="${me}">${tr('Lock it in')}</button></div>`;
+    } else if (!guest) {
+      entry = `<div class="guess-rows">${game.players.map((x) => {
+        const done = x.id in t.guesses;
+        const here = hostMayPlay(x);
+        const right = done ? `<span class="gstate ok">${tr('locked ✓')}</span>`
+          : here ? `<input class="guess-in" data-keep="guess-${x.id}" id="guess-${x.id}" type="password" inputmode="numeric" maxlength="4" placeholder="${tr('Year')}" autocomplete="off"><button class="btn small" data-action="guess" data-id="${x.id}">${tr('Lock')}</button>`
+            : `<span class="gstate">${tr('guessing on their phone…')}</span>`;
+        return `<div class="guess-row" style="--pc:${x.color}"><b>${esc(x.name)}</b>${right}</div>`;
+      }).join('')}</div>`;
+    }
+    const someIn = Object.keys(t.guesses).length;
+    const others = pending.filter((x) => x.id !== me); // a phone doesn't wait for itself
+    stage = `<div class="stage-split">
+      ${vinyl({ color: 'var(--gold)' }, false)}
+      <div class="stage-side">
+        ${eyebrow}
+        <h1>${tr('What year is this?')}</h1>
+        <p class="lead">${tr('Type a year. Closest gets the card, the exact year earns a token too.')}</p>
+        ${guest ? '' : controls()}
+        ${entry}
+        ${others.length && someIn ? waiting(tr('Waiting for {names}…', { names: others.map(nameB).join(', ') })) : ''}
+        ${someIn && pending.length && !guest ? `<button class="btn ghost small" data-action="revealGuesses">${tr('Reveal now')}</button>` : ''}
+      </div>
+    </div>`;
+    focus = guest ? mePlayer : null;
+  } else if (game.phase === 'sprint') {
+    const lvl = t.level;
+    const pills = G.SPRINT_CLIPS.map((sec, i) => `<span class="clip ${i < lvl ? 'done' : i === lvl ? 'now' : ''}"><b>${sec}s</b><small>+${G.sprintBonus(i)}</small></span>`).join('')
+      + `<span class="clip ${lvl >= G.SPRINT_CLIPS.length ? 'now' : ''}"><b>∞</b><small>+0</small></span>`;
+    const status = !sprintNow.on ? tr('Paused')
+      : lvl >= G.SPRINT_CLIPS.length ? tr('Full song')
+        : sprintNow.gap ? tr('Next clip coming…') : tr('Clip {n}: {s} seconds', { n: lvl + 1, s: G.SPRINT_CLIPS[lvl] });
+    const wrong = t.lastWrong && pl(t.lastWrong);
+    const outNote = t.out.length ? `<p class="hint">${tr('Out for this song: {names}', { names: t.out.map((id) => nameB(pl(id))).join(', ') })}</p>` : '';
+    let buzzers = '';
+    if (guest && mePlayer) {
+      buzzers = t.out.includes(me) ? `<p class="lead">${tr("You're out for this song.")}</p>`
+        : `<button class="btn buzz-big" data-action="buzz" data-id="${me}" style="--pc:${mePlayer.color}">${tr('BUZZ')}</button>
+          ${G.canSprintBuy(game, me) ? `<button class="btn ghost small" data-action="sbuy" data-id="${me}">${tr('Buy it')} <span class="cost">3</span></button>` : ''}`;
+    } else if (!guest) {
+      buzzers = `<div class="buzzers">${game.players.map((x, i) => {
+        if (!hostMayPlay(x)) return `<div class="buzz phone" style="--pc:${x.color}"><b>${esc(x.name)}</b><small>${t.out.includes(x.id) ? tr('out') : tr('on their phone')}</small></div>`;
+        const out = t.out.includes(x.id);
+        return `<button class="buzz ${out ? 'out' : ''}" data-action="buzz" data-id="${x.id}" style="--pc:${x.color}" ${out ? 'disabled' : ''}>
+          <b>${esc(x.name)}</b><small>${out ? tr('out') : i < 9 ? tr('key {k}', { k: i + 1 }) : ''}</small></button>`;
+      }).join('')}</div>`;
+    }
+    stage = `<div class="stage-split">
+      ${vinyl({ color: 'var(--hot)' }, false)}
+      <div class="stage-side">
+        ${eyebrow}
+        <h1>${status}</h1>
+        <div class="clips">${pills}</div>
+        ${wrong ? `<p class="lead">${tr('{name} missed it. Still open for everyone else.', { name: nameB(wrong) })}</p>` : `<p class="lead">${tr('Know where it goes on your timeline? Buzz in. The sooner, the more tokens.')}</p>`}
+        ${buzzers}
+        ${outNote}
+        ${guest ? '' : `${controls()}<button class="btn ghost small" data-action="giveUp">${tr('Nobody knows: reveal it')}</button>`}
+      </div>
+    </div>`;
+    focus = guest ? mePlayer : null;
+  } else if (game.phase === 'buzzed') {
+    const b = pl(t.buzz);
+    const mine = mayAct(b.id);
+    focus = b;
+    tlMode = mine ? 'place' : 'watch';
+    stage = `<div class="stage-split">
+      ${vinyl(b, false)}
+      <div class="stage-side">
+        <p class="eyebrow" style="--pc:${b.color}">${guest && me === b.id ? tr('You buzzed!') : tr('{name} buzzed!', { name: esc(b.name) })}</p>
+        <h1>${mine ? tr('Where does it go?') : tr('{name} is placing it', { name: esc(b.name) })}</h1>
+        <p class="lead">${tr('Right gap: the card, +{n} tokens. Wrong gap: out for this song.', { n: G.sprintBonus(t.buzzLevel) })}</p>
+        ${mine ? `<button class="btn big lock" data-action="lock" ${t.slot == null ? 'disabled' : ''}>${t.slot == null ? tr('Pick a gap first') : tr('Lock it in')}</button>` : waiting(tr('Waiting for {name}…', { name: nameB(b) }))}
+      </div>
+    </div>`;
+  } else if (game.phase === 'reveal') {
+    const r = t.result;
+    let verdict;
+    let detail = '';
+    if (mode === 'auction') {
+      const winners = (r.winners || []).map(pl);
+      if (!winners.length) verdict = `<span class="bad">${tr('Nobody guessed. The card is out.')}</span>`;
+      else if (r.best === 0) verdict = `<span class="good">${tr('Spot on! {names} get the card and a token.', { names: winners.map(nameB).join(' & ') })}</span>`;
+      else verdict = `<span class="good">${tr('{names} closest, {n} off. The card is theirs.', { names: winners.map(nameB).join(' & '), n: r.best === 1 ? tr('1 year') : tr('{n} years', { n: r.best }) })}</span>`;
+      const rows = Object.entries(t.guesses).map(([id, y]) => ({ p: pl(id), y, off: Math.abs(y - t.card.y) })).filter((x) => x.p).sort((a, b) => a.off - b.off);
+      detail = `<ol class="guess-list">${rows.map((x) => `<li class="${r.winners.includes(x.p.id) ? 'win' : ''}" style="--pc:${x.p.color}"><b>${esc(x.p.name)}</b><span class="gy">${x.y}</span><span class="goff">${x.off ? (x.y < t.card.y ? '−' : '+') + x.off : '✓'}</span></li>`).join('')}</ol>`;
+      focus = (guest && r.winners.includes(me) ? mePlayer : winners[0]) || (guest ? mePlayer : null);
+    } else {
+      const w = r.winner && pl(r.winner);
+      if (r.bought) verdict = `<span class="good">${tr('{name} bought it.', { name: nameB(w) })}</span>`;
+      else if (w) verdict = `<span class="good">${r.bonus ? tr('{name} got it! +{n} tokens.', { name: nameB(w), n: r.bonus }) : tr('{name} got it!', { name: nameB(w) })}</span>`;
+      else verdict = `<span class="bad">${tr('Nobody got it. The card is out.')}</span>`;
+      if (t.out.length) detail = `<p class="hint">${tr('Wrong spot: {names}', { names: t.out.map((id) => nameB(pl(id))).join(', ') })}</p>`;
+      focus = w || (guest ? mePlayer : null);
+    }
+    if (focus) tlMode = 'reveal';
+    stage = `<div class="stage-split">
+      ${vinyl(focus || { color: 'var(--gold)' }, true)}
+      <div class="stage-side reveal">
+        <div class="big-card" style="--cc:${yearColor(t.card.y)}">
+          <span class="cyear">${t.card.y}</span>
+          <span class="ctitle">${esc(t.card.t)}</span>
+          <span class="cartist">${esc(t.card.a)}</span>
+        </div>
+        <p class="verdict">${verdict}</p>
+        ${detail}
+        ${guest && !me ? '' : `<div class="inline wrap"><button class="btn big" data-action="next">${game.winner ? tr('See who won') : tr('Next song')} →</button>
+          ${guest ? '' : `<button class="btn ghost" data-action="play">${tr(ui.playing ? '❚❚ Pause' : '▶ Keep listening')}</button>`}</div>`}
+      </div>
+    </div>`;
+  }
+
+  const spectator = guest && !me ? `<div class="netnote">${tr('You joined during this game: you are watching, and you play in the next one.')}</div>` : '';
+  const cards = (x) => (x.timeline.length === 1 ? tr('1 card') : tr('{n} cards', { n: x.timeline.length }));
+  let tls;
+  if (focus) {
+    tls = `<section class="tl-wrap" style="--pc:${focus.color}">
+      <div class="tl-head">${guest && me === focus.id ? tr('Your timeline') : tr('{who} timeline', { who: `<b>${esc(poss(focus.name))}</b>` })} <span class="meta">${cards(focus)}</span></div>
+      ${timelineHtml(focus, tlMode)}</section>`;
+    if (guest && mePlayer && focus.id !== me) tls += `<section class="tl-wrap mine" style="--pc:${mePlayer.color}"><div class="tl-head">${tr('Your timeline')} <span class="meta">${cards(mePlayer)}</span></div>${timelineHtml(mePlayer, 'view')}</section>`;
+  } else {
+    tls = `<section class="tl-wrap all">${game.players.map((x) => `<div class="tl-head" style="--pc:${x.color}"><b>${esc(x.name)}</b> <span class="meta">${cards(x)}</span></div>${timelineHtml(x, 'view')}`).join('')}</section>`;
+  }
+
+  return `<div class="game allplay ${guest ? 'is-guest' : ''}">
+    <header class="gtop">${logo(true)}<div class="scores">${scoreboard()}</div>${gameMenu()}</header>
+    ${hostBanner()}${spectator}
+    <main class="stage">${stage}</main>
+    ${tls}
+  </div>`;
+}
+
 function lastRoundNote() {
   const by = G.finalRoundBy(game);
   if (!by) return '';
-  return `<p class="last-round" style="--pc:${by.color}"><b>${tr('Last round')}</b> ${tr('{name} has {n} cards. Everyone gets as many turns before the game ends.', { name: esc(by.name), n: by.timeline.length })}</p>`;
+  const name = by.team ? teamName(by.team) : by.players[0].name;
+  const color = by.team ? by.team.color : by.players[0].color;
+  return `<p class="last-round" style="--pc:${color}"><b>${tr('Last round')}</b> ${tr('{name} has {n} cards. Everyone gets as many turns before the game ends.', { name: esc(name), n: by.cards })}</p>`;
 }
 
 function renderOver() {
@@ -1236,6 +1594,8 @@ function renderOver() {
   const w = game.players.find((p) => p.id === game.winner) || game.players.find((p) => p.id === st[0].id);
   const tied = (game.winners || []).map((id) => game.players.find((p) => p.id === id)).filter(Boolean);
   const guest = role === 'guest';
+  const sides = game.teams ? G.scoreSides(game) : null;
+  const winTeams = sides ? sides.filter((s) => (game.winSides || []).includes(s.id)) : [];
   const buttons = guest ? `<p class="waiting">${t('Waiting for the host to start a new game…')}</p>`
     : `<div class="inline"><button class="btn big" data-action="again">${t('Play again')}</button><button class="btn ghost" data-action="setup">${t('Setup')}</button></div>`;
   const menu = guest ? gameMenu() : `<div class="gmenu">${roomChip()}<button class="btn ghost small" data-action="undo">${t('Undo')}</button>${langSwitch()}</div>`;
@@ -1243,10 +1603,16 @@ function renderOver() {
     <header class="gtop">${logo(true)}<div class="scores">${scoreboard()}</div>${menu}</header>
     ${hostBanner()}
     <main class="stage"><div class="stage-center">
-      ${tied.length > 1 ? `<p class="eyebrow" style="--pc:${w.color}">${t("It's a tie")}</p>
+      ${winTeams.length === 1 ? `<p class="eyebrow" style="--pc:${winTeams[0].team.color}">${t('Winning team')}</p>
+      <h1 class="who" style="--pc:${winTeams[0].team.color}">${esc(teamName(winTeams[0].team))}</h1>
+      <p class="lead">${winTeams[0].players.map((p) => `<b style="color:${p.color}">${esc(p.name)}</b>`).join(' & ')}</p>`
+      : winTeams.length > 1 ? `<p class="eyebrow" style="--pc:var(--gold)">${t("It's a tie")}</p>
+      <h1 class="who tie">${winTeams.map((s) => `<span style="color:${s.team.color}">${esc(teamName(s.team))}</span>`).join(' & ')}</h1>`
+      : tied.length > 1 ? `<p class="eyebrow" style="--pc:${w.color}">${t("It's a tie")}</p>
       <h1 class="who tie">${tied.map((p) => `<span style="color:${p.color}">${esc(p.name)}</span>`).join(' & ')}</h1>`
       : `<p class="eyebrow" style="--pc:${w.color}">${t('Winner')}</p>
       <h1 class="who" style="--pc:${w.color}">${esc(w.name)}</h1>`}
+      ${sides ? `<ol class="podium teams-podium">${sides.slice().sort((a, b) => b.cards / b.target - a.cards / a.target).map((s) => `<li style="--pc:${s.team.color}"><b>${esc(teamName(s.team))}</b><span>${t('{cards} of {target} cards', { cards: s.cards, target: s.target })}</span></li>`).join('')}</ol>` : ''}
       <ol class="podium">${st.map((s) => `<li style="--pc:${s.color}"><b>${esc(s.name)}</b><span>${t('{cards} cards · {tokens} tokens', { cards: s.cards, tokens: s.tokens })}</span></li>`).join('')}</ol>
       ${buttons}
     </div></main>
@@ -1287,6 +1653,29 @@ $app.addEventListener('click', async (e) => {
   const a = el.dataset.action;
   const id = el.dataset.id;
   const player = id && setup.players.find((p) => p.id === id);
+  if (role === 'guest' && game && G.allPlay(game) && ['draw', 'play', 'replay', 'skip', 'next', 'guess', 'reguess', 'revealGuesses', 'buzz', 'sbuy', 'slot', 'lock', 'giveUp'].includes(a)) {
+    const me = myPlayerId();
+    if (a === 'guess') {
+      const v = parseInt($app.querySelector(`#guess-${me}`)?.value, 10);
+      if (!(v >= 1900 && v <= 2100)) { toast(t('Type a year, like 1987.')); return; }
+      ui.lastGuess = v;
+      game.turn.guesses[me] = true;
+      render();
+      sendAct('guess', { year: v });
+      return;
+    }
+    if (a === 'reguess') { if (game.phase === 'guess') { delete game.turn.guesses[me]; render(); } return; }
+    if (a === 'buzz') { if (game.phase === 'sprint' && id === me) { navigator.vibrate?.(40); sendAct('buzz'); } return; }
+    if (a === 'sbuy') { if (id === me) sendAct('sbuy'); return; }
+    if (a === 'slot') {
+      if (game.phase === 'buzzed' && game.turn.buzz === me) { const slot = +el.dataset.slot; game.turn.slot = slot; render(); sendAct('slot', { slot }); }
+      return;
+    }
+    if (a === 'lock') { if (game.phase === 'buzzed' && game.turn.buzz === me) sendAct('lock'); return; }
+    if (!me) return;
+    sendAct(a);
+    return;
+  }
   if (role === 'guest' && game && ['draw', 'play', 'replay', 'skip', 'buy', 'lock', 'reveal', 'named', 'next', 'slot', 'challenger', 'chYes', 'chPass', 'chBack'].includes(a)) {
     const me = myPlayerId();
     if (a === 'chYes') { if (id === me && game.phase === 'challenge') { ui.challenger = me; render(); } return; }
@@ -1309,7 +1698,31 @@ $app.addEventListener('click', async (e) => {
     sendAct(a);
     return;
   }
-  if (role !== 'guest' && game && ui.view === 'game') {
+  if (role !== 'guest' && game && ui.view === 'game' && G.allPlay(game)) {
+    // All-play modes: the host screen runs the song; players move for themselves (or for a phone that dropped).
+    if (['guess', 'buzz', 'sbuy'].includes(a) && !mayAct(id)) return;
+    if (['slot', 'lock'].includes(a) && !(game.phase === 'buzzed' && mayAct(game.turn.buzz))) return;
+    switch (a) {
+      case 'draw': sp?.activate(); return beginTurn();
+      case 'guess': {
+        const input = $app.querySelector(`#guess-${id}`);
+        const v = parseInt(input?.value, 10);
+        if (!(v >= 1900 && v <= 2100)) { toast(t('Type a year, like 1987.')); input?.focus(); return; }
+        input.value = '';
+        guessFor(id, v);
+        $app.querySelector('.guess-rows input')?.focus(); // next player's box
+        return;
+      }
+      case 'revealGuesses': case 'giveUp': return giveUp();
+      case 'buzz': sp?.activate(); return doBuzz(id);
+      case 'sbuy': return doSprintBuy(id);
+      case 'slot': act(() => G.chooseSlot(game, +el.dataset.slot)); return;
+      case 'lock': return doSprintLock();
+      case 'buy': case 'named': case 'challenger': case 'chYes': case 'chPass': case 'reveal': return;
+      default: // play, replay, skip, next, undo, menus: the shared handlers below
+    }
+  }
+  if (role !== 'guest' && game && ui.view === 'game' && !G.allPlay(game)) {
     // Only the screen whose move it is gets to make it (see mayAct).
     const turnHere = mayAct(G.activePlayer(game).id);
     if (['draw', 'skip', 'buy', 'lock', 'named', 'next'].includes(a) && !turnHere) return;
@@ -1401,6 +1814,7 @@ $app.addEventListener('click', async (e) => {
     case 'togglePack': { const p = setup.packs.find((x) => x.id === id); p.off = !p.off; saveSetup(); render(); return; }
     case 'removePack': setup.packs = setup.packs.filter((x) => x.id !== id); saveSetup(); render(); return;
     case 'reloadPack': return reloadPack(id);
+    case 'mode': if (G.MODES.includes(id)) { setup.settings.mode = id; saveSetup(); render(); } return;
     case 'setting': {
       const s = setup.settings;
       if (id === 'noExtreme') s.exclude = s.exclude.includes('extreme') ? s.exclude.filter((x) => x !== 'extreme') : s.exclude.concat('extreme');
@@ -1472,6 +1886,7 @@ $app.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && e.target.dataset.field === 'other') { e.preventDefault(); addPack(); }
   if (e.key === 'Enter' && ['joinCode', 'joinName', 'joinBorn'].includes(e.target.id)) { e.preventDefault(); joinGo(); }
   if (e.key === 'Enter' && ['meName', 'meBorn'].includes(e.target.id)) { e.preventDefault(); saveProfile(); }
+  if (e.key === 'Enter' && e.target.classList?.contains('guess-in')) { e.preventDefault(); e.target.closest('.guess-row, .guess-me')?.querySelector('[data-action="guess"]')?.click(); }
   if (e.key === 'Enter' && e.target.id === 'clientId') { e.preventDefault(); $app.querySelector('[data-action="saveClient"]').click(); }
 });
 
@@ -1484,6 +1899,7 @@ document.addEventListener('keydown', (e) => {
   const t = game.turn;
   if (e.key === ' ') { e.preventDefault(); if (t) togglePlay(); return; }
   if (e.key === 'u' || e.key === 'U') { undo(); return; }
+  if (G.allPlay(game)) { allPlayKey(e); return; }
   if (!mayAct(G.activePlayer(game).id)) return; // a phone player's turn: their phone has the controls
   const n = G.activePlayer(game).timeline.length;
   if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && game.phase === 'listen') {
@@ -1501,6 +1917,28 @@ document.addEventListener('keydown', (e) => {
     else if (game.phase === 'draw') beginTurn();
   }
 });
+
+// Year auction / Intro sprint keys: 1-9 buzz that player, arrows + enter place a buzzed card, enter = next song.
+function allPlayKey(e) {
+  const t = game.turn;
+  if (game.phase === 'sprint' && /^[1-9]$/.test(e.key)) {
+    const p = game.players[+e.key - 1];
+    if (p && hostMayPlay(p)) { e.preventDefault(); doBuzz(p.id); }
+    return;
+  }
+  if (game.phase === 'buzzed' && mayAct(t.buzz)) {
+    const n = game.players.find((x) => x.id === t.buzz).timeline.length;
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      e.preventDefault();
+      const cur = t.slot ?? (e.key === 'ArrowLeft' ? n + 1 : -1);
+      act(() => G.chooseSlot(game, Math.max(0, Math.min(n, cur + (e.key === 'ArrowLeft' ? -1 : 1)))));
+    } else if (e.key === 'Enter' && t.slot != null) { e.preventDefault(); doSprintLock(); }
+    return;
+  }
+  if (e.key === 'Enter') {
+    if (game.phase === 'reveal') { e.preventDefault(); nextTurn(); } else if (game.phase === 'draw') { e.preventDefault(); beginTurn(); }
+  }
+}
 
 // ---------- boot ----------
 
